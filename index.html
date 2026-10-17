@@ -325,9 +325,6 @@ textarea { resize: vertical; min-height: 120px; }
 .seller { color: var(--muted); font-size: .9rem; margin: 0; }
 .seller b { color: var(--text); }
 
-.phone-box { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--primary-soft); border-radius: 10px; padding: 10px 12px; flex-wrap: wrap; }
-.phone-box span { display: block; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-.phone-box b { font-size: 1.1rem; user-select: all; font-variant-numeric: tabular-nums; }
 
 .section { margin-top: 20px; }
 .section h2 { font-size: 1.2rem; margin-bottom: 12px; }
@@ -397,6 +394,33 @@ textarea { resize: vertical; min-height: 120px; }
 .auth-form { display: flex; flex-direction: column; gap: 14px; }
 .auth-extra { margin: -4px 0 0; text-align: center; }
 .other-input { margin-top: 6px; }
+/* Комплектация: галочки в форме и список на странице объявления */
+.features-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; }
+.check { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.field label.check { text-transform: none; letter-spacing: normal; font-size: .92rem; font-weight: 500; color: var(--text); }
+.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); flex: none; }
+.check:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.features-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 24px; }
+.features-list li::before { content: '✓'; color: var(--primary); font-weight: 700; margin-right: 8px; }
+/* Блок «Продавец» и страница продавца */
+.seller-block { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 16px 32px; align-items: start; }
+.seller-block-example { grid-template-columns: minmax(0, 420px); }
+.seller-info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.seller-link { color: inherit; text-decoration: none; border-radius: 12px; }
+.seller-link:hover .seller-name { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.seller-section .contact-seller { margin-top: 0; }
+.seller-phone { align-items: center; }
+.phone-reveal { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.phone-reveal a { font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; text-decoration: none; }
+.user-card { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 20px; }
+.user-card-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; align-items: flex-start; }
+.user-card-text h1 { font-size: 1.5rem; margin: 0; overflow-wrap: anywhere; }
+.user-card-text .seller-meta { margin: 0; }
+.user-card-text .seller-contacts { min-width: min(320px, 100%); }
+@media (max-width: 700px) {
+  .seller-block { grid-template-columns: 1fr; }
+}
 
 /* ---------- Toast ---------- */
 .toast {
@@ -1022,6 +1046,15 @@ const BODIES = ['sedan', 'hatchback', 'wagon', 'suv', 'coupe', 'convertible', 'm
 const COLORS = ['white', 'black', 'silver', 'grey', 'blue', 'lightblue', 'red', 'burgundy', 'green', 'brown', 'beige',
   'yellow', 'orange', 'purple', 'gold', 'other'];
 const DOORS = [2, 3, 4, 5];
+// Дополнительные характеристики (необязательные, база — с версии 4)
+const DRIVES = ['fwd', 'rwd', 'awd'];
+const SEATS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+const CONDITIONS = ['new', 'used', 'damaged'];
+const ECO_CLASSES = ['euro1', 'euro2', 'euro3', 'euro4', 'euro5', 'euro6'];
+const INTERIOR_COLORS = ['black', 'grey', 'beige', 'brown', 'white', 'red', 'blue', 'other'];
+const MATERIALS = ['fabric', 'leather', 'eco_leather', 'alcantara', 'velour', 'combined'];
+const FEATURES = ['ac', 'climate', 'navigation', 'parking_sensors', 'rear_camera', 'heated_seats', 'leather', 'sunroof',
+  'cruise', 'bluetooth', 'alloy_wheels', 'towbar'];
 const MIN_YEAR = 1930;
 // Объявления, сохранённые до появления языков, содержат русские значения
 const LEGACY_VALUES = {
@@ -1033,6 +1066,13 @@ const LEGACY_VALUES = {
 const code = (v) => LEGACY_VALUES[v] || v || '';
 // Цвет хранится кодом (white, black…); у старых объявлений и примеров — текстом
 const colorLabel = (v) => (COLORS.includes(v) ? t(`color.${v}`) : loc(v));
+// Название месяца на языке сайта: 3 → «Март» / «March»
+const monthName = (m) => {
+  const name = new Date(2000, m - 1, 1).toLocaleDateString(LOCALES[lang], { month: 'long' });
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
+// Техосмотр до: «2027-03» → «03.2027»
+const fmtMonthYear = (ym) => (ym ? `${ym.slice(5, 7)}.${ym.slice(0, 4)}` : '');
 
 const MAX_PHOTOS = 10;
 const MAX_FILE_MB = 20;
@@ -1298,6 +1338,13 @@ const I18N = {
     'detail.photoBy': 'Фото',
     'detail.phone': 'Телефон продавца',
     'detail.copy': 'Копировать',
+    'seller.showPhone': '📞 Показать номер',
+    'seller.profile': 'профиль продавца',
+    'seller.since': 'На PMRAuto с',
+    'user.listings': 'Объявления продавца',
+    'user.none': 'У продавца пока нет объявлений',
+    'user.notFound': 'Продавец не найден',
+    'user.edit': 'Редактировать профиль',
     'detail.delete': '🗑 Удалить объявление',
     'detail.edit': '✏️ Редактировать объявление',
     'detail.specs': 'Характеристики',
@@ -1316,6 +1363,50 @@ const I18N = {
     'spec.color': 'Цвет',
     'spec.doors': 'Двери',
     'spec.city': 'Город',
+    'spec.engine': 'Объём двигателя',
+    'spec.drive': 'Привод',
+    'spec.seats': 'Мест',
+    'spec.condition': 'Состояние',
+    'spec.customs': 'Растаможена',
+    'spec.inspection': 'Техосмотр до',
+    'spec.consumption': 'Расход топлива',
+    'spec.eco': 'Экологический класс',
+    'spec.interiorColor': 'Цвет салона',
+    'spec.interiorMaterial': 'Материал салона',
+    'unit.cc': 'см³',
+    'unit.per100': 'л/100 км',
+    'drive.fwd': 'Передний',
+    'drive.rwd': 'Задний',
+    'drive.awd': 'Полный',
+    'condition.new': 'Новая',
+    'condition.used': 'С пробегом',
+    'condition.damaged': 'После ДТП',
+    'common.yes': 'Да',
+    'common.no': 'Нет',
+    'eco.euro1': 'Евро 1',
+    'eco.euro2': 'Евро 2',
+    'eco.euro3': 'Евро 3',
+    'eco.euro4': 'Евро 4',
+    'eco.euro5': 'Евро 5',
+    'eco.euro6': 'Евро 6',
+    'material.fabric': 'Ткань',
+    'material.leather': 'Кожа',
+    'material.eco_leather': 'Экокожа',
+    'material.alcantara': 'Алькантара',
+    'material.velour': 'Велюр',
+    'material.combined': 'Комбинированный',
+    'feature.ac': 'Кондиционер',
+    'feature.climate': 'Климат-контроль',
+    'feature.navigation': 'Навигация',
+    'feature.parking_sensors': 'Парктроники',
+    'feature.rear_camera': 'Камера заднего вида',
+    'feature.heated_seats': 'Подогрев сидений',
+    'feature.leather': 'Кожаный салон',
+    'feature.sunroof': 'Люк',
+    'feature.cruise': 'Круиз-контроль',
+    'feature.bluetooth': 'Bluetooth',
+    'feature.alloy_wheels': 'Легкосплавные диски',
+    'feature.towbar': 'Фаркоп',
     'unit.km': 'км',
     'unit.hp': 'л.с.',
 
@@ -1390,6 +1481,20 @@ const I18N = {
     'sell.body': 'Тип кузова',
     'sell.color': 'Цвет',
     'sell.doors': 'Количество дверей',
+    'sell.extra': 'Дополнительно',
+    'sell.engine': 'Объём двигателя, см³',
+    'sell.drive': 'Привод',
+    'sell.seats': 'Количество мест',
+    'sell.condition': 'Состояние',
+    'sell.customs': 'Растаможена',
+    'sell.inspection': 'Техосмотр до',
+    'sell.month': 'Месяц',
+    'sell.yearShort': 'Год',
+    'sell.consumption': 'Расход топлива, л/100 км',
+    'sell.eco': 'Экологический класс',
+    'sell.interiorColor': 'Цвет салона',
+    'sell.interiorMaterial': 'Материал салона',
+    'sell.features': 'Комплектация',
     'sell.chooseYear': 'Выберите год',
     'sell.city': 'Город',
     'sell.cityPh': 'Тирасполь',
@@ -1414,6 +1519,9 @@ const I18N = {
     'field.model': 'модель',
     'field.year': 'год ({range})',
     'field.power': 'мощность (только цифры, 1–3000)',
+    'field.engine': 'объём двигателя (только цифры, 50–20000)',
+    'field.consumption': 'расход топлива (например, 6,5)',
+    'field.inspection': 'техосмотр (выберите месяц и год)',
     'field.mileage': 'пробег',
     'field.price': 'цену',
     'field.fuel': 'тип топлива',
@@ -1745,6 +1853,13 @@ const I18N = {
     'detail.photoBy': 'Photo',
     'detail.phone': 'Seller’s phone',
     'detail.copy': 'Copy',
+    'seller.showPhone': '📞 Show number',
+    'seller.profile': 'seller profile',
+    'seller.since': 'On PMRAuto since',
+    'user.listings': 'Seller’s listings',
+    'user.none': 'No listings yet',
+    'user.notFound': 'Seller not found',
+    'user.edit': 'Edit profile',
     'detail.delete': '🗑 Delete listing',
     'detail.edit': '✏️ Edit listing',
     'detail.specs': 'Specifications',
@@ -1763,6 +1878,50 @@ const I18N = {
     'spec.color': 'Colour',
     'spec.doors': 'Doors',
     'spec.city': 'City',
+    'spec.engine': 'Engine size',
+    'spec.drive': 'Drive',
+    'spec.seats': 'Seats',
+    'spec.condition': 'Condition',
+    'spec.customs': 'Customs cleared',
+    'spec.inspection': 'Inspection valid until',
+    'spec.consumption': 'Fuel consumption',
+    'spec.eco': 'Emission class',
+    'spec.interiorColor': 'Interior colour',
+    'spec.interiorMaterial': 'Upholstery',
+    'unit.cc': 'cm³',
+    'unit.per100': 'l/100 km',
+    'drive.fwd': 'Front-wheel',
+    'drive.rwd': 'Rear-wheel',
+    'drive.awd': 'All-wheel',
+    'condition.new': 'New',
+    'condition.used': 'Used',
+    'condition.damaged': 'Accident-damaged',
+    'common.yes': 'Yes',
+    'common.no': 'No',
+    'eco.euro1': 'Euro 1',
+    'eco.euro2': 'Euro 2',
+    'eco.euro3': 'Euro 3',
+    'eco.euro4': 'Euro 4',
+    'eco.euro5': 'Euro 5',
+    'eco.euro6': 'Euro 6',
+    'material.fabric': 'Fabric',
+    'material.leather': 'Leather',
+    'material.eco_leather': 'Faux leather',
+    'material.alcantara': 'Alcantara',
+    'material.velour': 'Velour',
+    'material.combined': 'Mixed',
+    'feature.ac': 'Air conditioning',
+    'feature.climate': 'Climate control',
+    'feature.navigation': 'Navigation',
+    'feature.parking_sensors': 'Parking sensors',
+    'feature.rear_camera': 'Reversing camera',
+    'feature.heated_seats': 'Heated seats',
+    'feature.leather': 'Leather interior',
+    'feature.sunroof': 'Sunroof',
+    'feature.cruise': 'Cruise control',
+    'feature.bluetooth': 'Bluetooth',
+    'feature.alloy_wheels': 'Alloy wheels',
+    'feature.towbar': 'Tow bar',
     'unit.km': 'km',
     'unit.hp': 'hp',
 
@@ -1837,6 +1996,20 @@ const I18N = {
     'sell.body': 'Body type',
     'sell.color': 'Colour',
     'sell.doors': 'Number of doors',
+    'sell.extra': 'More details',
+    'sell.engine': 'Engine size, cm³',
+    'sell.drive': 'Drive',
+    'sell.seats': 'Number of seats',
+    'sell.condition': 'Condition',
+    'sell.customs': 'Customs cleared',
+    'sell.inspection': 'Inspection valid until',
+    'sell.month': 'Month',
+    'sell.yearShort': 'Year',
+    'sell.consumption': 'Fuel consumption, l/100 km',
+    'sell.eco': 'Emission class',
+    'sell.interiorColor': 'Interior colour',
+    'sell.interiorMaterial': 'Upholstery',
+    'sell.features': 'Equipment',
     'sell.chooseYear': 'Choose a year',
     'sell.city': 'City',
     'sell.cityPh': 'Tiraspol',
@@ -1861,6 +2034,9 @@ const I18N = {
     'field.model': 'model',
     'field.year': 'year ({range})',
     'field.power': 'power (digits only, 1–3000)',
+    'field.engine': 'engine size (digits only, 50–20000)',
+    'field.consumption': 'fuel consumption (e.g. 6.5)',
+    'field.inspection': 'inspection date (choose month and year)',
     'field.mileage': 'mileage',
     'field.price': 'price',
     'field.fuel': 'fuel type',
@@ -2085,6 +2261,17 @@ function listingFromRow(r) {
     transmission: r.transmission,
     power: r.power ?? '',
     doors: r.doors ?? '',
+    engineVolume: r.engine_volume ?? '',
+    drive: r.drive || '',
+    seats: r.seats ?? '',
+    condition: r.condition || '',
+    customsCleared: r.customs_cleared ?? null,
+    inspectionUntil: r.inspection_until ? r.inspection_until.slice(0, 7) : '', // «2027-03»
+    fuelConsumption: r.fuel_consumption ?? '',
+    ecoClass: r.eco_class || '',
+    interiorColor: r.interior_color || '',
+    interiorMaterial: r.interior_material || '',
+    features: r.features || [],
     body: r.body,
     color: r.color,
     city: r.city,
@@ -2621,6 +2808,7 @@ function setLang(next) {
   const form = $('#sell-form');
   if (currentRoute.name === 'sell' && form) {
     const values = Object.fromEntries(new FormData(form));
+    const features = new FormData(form).getAll('features');
     const { brand, model } = readSellBrandModel();
     renderNav('sell');
     renderSellForm();
@@ -2629,6 +2817,7 @@ function setLang(next) {
       if (fresh.elements[name]) fresh.elements[name].value = value;
     }
     setSellBrandModel(values.vehicle || 'car', brand, model);
+    setFeatureChecks(fresh, features);
     renderPreviews();
     return;
   }
@@ -3553,11 +3742,23 @@ function viewDetail(id) {
   const title = `${esc(car.brand)} ${esc(car.model)}`;
   const specs = [
     ['spec.vehicle', t(`vehicle.${vehicleOf(car)}`)], ['spec.brand', car.brand], ['spec.model', car.model], ['spec.year', car.year], ['spec.mileage', fmtKm(car.mileage)],
-    ['spec.fuel', tv('fuel', car.fuel)], ['spec.transmission', tv('transmission', car.transmission)],
+    ['spec.condition', car.condition ? t(`condition.${car.condition}`) : ''],
+    ['spec.fuel', tv('fuel', car.fuel)],
+    ['spec.engine', car.engineVolume ? `${num(car.engineVolume)} ${t('unit.cc')}` : ''],
     ['spec.power', car.power ? `${car.power} ${t('unit.hp')}` : ''],
-    ['spec.body', tv('body', car.body)], ['spec.doors', car.doors || ''], ['spec.color', colorLabel(car.color)],
+    ['spec.transmission', tv('transmission', car.transmission)],
+    ['spec.drive', car.drive ? t(`drive.${car.drive}`) : ''],
+    ['spec.consumption', car.fuelConsumption ? `${num(car.fuelConsumption)} ${t('unit.per100')}` : ''],
+    ['spec.eco', car.ecoClass ? t(`eco.${car.ecoClass}`) : ''],
+    ['spec.body', tv('body', car.body)], ['spec.doors', car.doors || ''], ['spec.seats', car.seats || ''],
+    ['spec.color', colorLabel(car.color)],
+    ['spec.interiorColor', car.interiorColor ? colorLabel(car.interiorColor) : ''],
+    ['spec.interiorMaterial', car.interiorMaterial ? t(`material.${car.interiorMaterial}`) : ''],
+    ['spec.customs', car.customsCleared == null ? '' : t(car.customsCleared ? 'common.yes' : 'common.no')],
+    ['spec.inspection', fmtMonthYear(car.inspectionUntil)],
     ['spec.city', cityLabel(cityKey(car))],
   ].filter(([, v]) => v !== '' && v != null);
+  const features = (car.features || []).filter((f) => FEATURES.includes(f));
   const description = loc(car.description);
 
   app.innerHTML = `
@@ -3574,7 +3775,6 @@ function viewDetail(id) {
         ${photos.length > 1 ? `<div class="thumbs">${photos.map((p, i) => `
           <button type="button" class="thumb" data-i="${i}" aria-label="${t('detail.photoN', { n: i + 1 })}"><img src="${p}" alt=""></button>`).join('')}
         </div>` : ''}
-        <div class="contact-seller">${contactSellerHtml(car)}</div>
       </div>
 
       <aside class="panel detail-side">
@@ -3589,13 +3789,9 @@ function viewDetail(id) {
         </div>
         ${car.example
           ? `<p class="seller"><span class="example-badge static">${t('detail.exampleBadge')}</span><br>${t('detail.exampleNote')}</p>`
-          : sellerCardHtml(car)}
+          : `<p class="seller-posted">${t('detail.posted', { date: fmtDate(car.createdAt) })}</p>`}
         ${car.credit ? `<p class="credit">${t('detail.photoBy')}: ${esc(car.credit.author)}, ${esc(car.credit.license)} ·
           <a href="${esc(car.credit.url)}" target="_blank" rel="noopener">Wikimedia Commons</a></p>` : ''}
-        ${car.phone ? `<div class="phone-box">
-          <div><span>${t('detail.phone')}</span><b id="phone-num">${esc(car.phone)}</b></div>
-          <button type="button" class="btn btn-ghost btn-sm" id="copy-phone">${t('detail.copy')}</button>
-        </div>` : ''}
         ${isOwner ? `<div class="owner-actions">
           <a href="#" class="btn btn-ghost btn-block" data-go="sell" data-param="${esc(car.id)}">${t('detail.edit')}</a>
           <button type="button" class="btn btn-danger btn-block" id="delete-btn">${t('detail.delete')}</button>
@@ -3607,7 +3803,12 @@ function viewDetail(id) {
       <h2>${t('detail.specs')}</h2>
       <dl class="specs">${specs.map(([k, v]) => `<div><dt>${t(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     </section>
-    ${description ? `<section class="panel section"><h2>${t('detail.description')}</h2><p class="description">${esc(description)}</p></section>` : ''}`;
+    ${features.length ? `<section class="panel section" aria-labelledby="features-title">
+      <h2 id="features-title">${t('sell.features')}</h2>
+      <ul class="features-list">${features.map((f) => `<li>${t(`feature.${f}`)}</li>`).join('')}</ul>
+    </section>` : ''}
+    ${description ? `<section class="panel section"><h2>${t('detail.description')}</h2><p class="description">${esc(description)}</p></section>` : ''}
+    ${sellerSectionHtml(car)}`;
 
   let index = 0;
   const show = (i) => {
@@ -3633,19 +3834,7 @@ function viewDetail(id) {
   });
   bindContactSeller(car);
 
-  $('#copy-phone')?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(car.phone);
-      toast(t('detail.phoneCopied'));
-    } catch {
-      const range = document.createRange();
-      range.selectNodeContents($('#phone-num'));
-      const sel = getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      toast(t('detail.phoneSelected'));
-    }
-  });
+  bindPhoneReveal(car);
 }
 
 document.addEventListener('keydown', (e) => {
@@ -4343,28 +4532,94 @@ function renderSecurityTab(user) {
   });
 }
 
-// Карточка продавца на странице объявления: данные из его профиля
-function sellerCardHtml(car) {
-  const account = getUser(car.owner);
-  const p = account?.profile || {};
+/* Блок «Продавец» внизу объявления: имя и аватар со ссылкой на профиль, город, контакты,
+   телефон по кнопке «Показать номер» и «Написать продавцу» */
+function sellerSectionHtml(car) {
+  let info = '';
+  if (!car.example) {
+    const account = getUser(car.owner);
+    const p = account?.profile || {};
+    const city = cityLabel(cityKey(car)) || (p.city ? cityLabel(cityKey({ city: p.city })) : '');
+    const rows = [
+      city && `<li><span>${t('spec.city')}</span><b>${esc(city)}</b></li>`,
+      account && `<li><span>${t('seller.since')}</span><b>${fmtDate(account.createdAt)}</b></li>`,
+      p.email && `<li><span>${t('profile.email')}</span><b>${esc(p.email)}</b></li>`,
+      p.telegram && `<li><span>Telegram</span><b>@${esc(p.telegram)}</b></li>`,
+      car.phone && `<li class="seller-phone"><span>${t('detail.phone')}</span>
+        <span class="phone-reveal" id="phone-reveal"><button type="button" class="btn btn-ghost btn-sm" id="show-phone">${t('seller.showPhone')}</button></span></li>`,
+    ].filter(Boolean).join('');
+    const head = `${avatarHtml(car.owner, 56)}
+      <span class="seller-head-text">
+        <b class="seller-name">${esc(displayName(car.owner))}</b>
+        ${account ? `<span class="seller-meta">@${esc(car.owner)} · ${t('seller.profile')} →</span>` : ''}
+      </span>`;
+    info = `<div class="seller-info">
+      ${account ? `<a href="#" class="seller-head seller-link" data-go="user" data-param="${esc(car.owner)}">${head}</a>`
+        : `<div class="seller-head">${head}</div>`}
+      ${rows ? `<ul class="seller-contacts">${rows}</ul>` : ''}
+    </div>`;
+  }
+  return `<section class="panel section seller-section" aria-labelledby="seller-title">
+    <h2 id="seller-title">${t('detail.seller')}</h2>
+    <div class="seller-block${car.example ? ' seller-block-example' : ''}">
+      ${info}
+      <div class="contact-seller">${contactSellerHtml(car)}</div>
+    </div>
+  </section>`;
+}
+
+// Телефон показываем по кнопке «Показать номер»; потом его можно набрать или скопировать
+function bindPhoneReveal(car) {
+  $('#show-phone')?.addEventListener('click', () => {
+    const box = $('#phone-reveal');
+    box.innerHTML = `<a href="tel:${esc(car.phone.replace(/[^\d+]/g, ''))}" id="phone-num">${esc(car.phone)}</a>
+      <button type="button" class="btn btn-ghost btn-sm" id="copy-phone">${t('detail.copy')}</button>`;
+    $('#copy-phone').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(car.phone);
+        toast(t('detail.phoneCopied'));
+      } catch {
+        const range = document.createRange();
+        range.selectNodeContents($('#phone-num'));
+        const sel = getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        toast(t('detail.phoneSelected'));
+      }
+    });
+  });
+}
+
+// Страница продавца (#/user/<логин>): профиль и все его объявления
+function viewUser(username) {
+  const account = getUser(username);
+  if (!account && refetchMissing(`user:${username}`)) return;
+  if (!account) {
+    app.innerHTML = `<div class="empty"><h3>${t('user.notFound')}</h3>
+      <p><a href="#" data-go="catalog" class="btn btn-primary">${t('detail.toCatalog')}</a></p></div>`;
+    return;
+  }
+  const p = account.profile || {};
   const city = p.city ? cityLabel(cityKey({ city: p.city })) : '';
-  const meta = [city && `📍 ${esc(city)}`, account && t('account.memberSince', { date: fmtDate(account.createdAt) })].filter(Boolean);
+  const cars = db.listings.filter((l) => l.owner === username).sort(SORTERS.new);
   const contacts = [
     p.email && `<li><span>${t('profile.email')}</span><b>${esc(p.email)}</b></li>`,
     p.telegram && `<li><span>Telegram</span><b>@${esc(p.telegram)}</b></li>`,
   ].filter(Boolean).join('');
-  return `<div class="seller-card">
-    <div class="seller-head">
-      ${avatarHtml(car.owner, 48)}
-      <div class="seller-head-text">
-        <span class="seller-label">${t('detail.seller')}</span>
-        <b class="seller-name">${esc(displayName(car.owner))}</b>
-        ${meta.length ? `<span class="seller-meta">${meta.join(' · ')}</span>` : ''}
+  app.innerHTML = `
+    <a href="#" data-go="catalog" class="back">← ${t('nav.catalog')}</a>
+    <section class="panel user-card">
+      ${avatarHtml(username, 88)}
+      <div class="user-card-text">
+        <h1>${esc(displayName(username))}</h1>
+        <p class="seller-meta">@${esc(username)}${city ? ` · 📍 ${esc(city)}` : ''} · ${t('account.memberSince', { date: fmtDate(account.createdAt) })}</p>
+        ${contacts ? `<ul class="seller-contacts">${contacts}</ul>` : ''}
+        ${username === currentUser() ? `<a href="#" data-go="account" data-param="profile" class="btn btn-ghost btn-sm">${t('user.edit')}</a>` : ''}
       </div>
-    </div>
-    ${contacts ? `<ul class="seller-contacts">${contacts}</ul>` : ''}
-    <p class="seller-posted">${t('detail.posted', { date: fmtDate(car.createdAt) })}</p>
-  </div>`;
+    </section>
+    <div class="page-head"><div><h2>${t('user.listings')}</h2>
+      <p>${cars.length ? `${num(cars.length)} ${plural('plural.listings', cars.length)}` : t('user.none')}</p></div></div>
+    ${cars.length ? `<div class="grid">${cars.map((c) => cardHtml(c)).join('')}</div>` : ''}`;
 }
 
 /* ---------- Выставить машину ---------- */
@@ -4409,12 +4664,24 @@ function fillSellForm(car) {
     vehicle: vehicleOf(car), year: car.year, mileage: car.mileage,
     price: car.price, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
     body: code(car.body) || '', doors: car.doors || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
+    engineVolume: car.engineVolume || '', drive: car.drive || '', seats: car.seats || '', condition: car.condition || '',
+    customs: car.customsCleared == null ? '' : car.customsCleared ? 'yes' : 'no',
+    inspMonth: car.inspectionUntil ? Number(car.inspectionUntil.slice(5, 7)) : '',
+    inspYear: car.inspectionUntil ? Number(car.inspectionUntil.slice(0, 4)) : '',
+    consumption: car.fuelConsumption === '' ? '' : String(car.fuelConsumption).replace('.', lang === 'ru' ? ',' : '.'),
+    eco: car.ecoClass || '', interiorColor: car.interiorColor || '', interiorMaterial: car.interiorMaterial || '',
     description: loc(car.description),
   };
   // Цвет, введённый текстом до появления списка, добавляем в список, чтобы он не потерялся
   if (values.color && !COLORS.includes(values.color)) {
     form.elements.color.insertAdjacentHTML('beforeend', `<option value="${esc(values.color)}">${esc(values.color)}</option>`);
   }
+  // Старый год техосмотра (уже прошедший) тоже оставляем в списке
+  const inspYear = form.elements.inspYear;
+  if (inspYear && values.inspYear && ![...inspYear.options].some((o) => o.value === String(values.inspYear))) {
+    inspYear.insertAdjacentHTML('beforeend', `<option value="${values.inspYear}">${values.inspYear}</option>`);
+  }
+  setFeatureChecks(form, car.features || []);
   for (const [name, value] of Object.entries(values)) {
     if (form.elements[name]) form.elements[name].value = value;
   }
@@ -4505,6 +4772,7 @@ function renderSellForm() {
           <label for="s-description">${t('sell.description')}</label>
           <textarea id="s-description" name="description" maxlength="3000" placeholder="${esc(t('sell.descriptionPh'))}"></textarea>
         </div>
+${extraFieldsHtml()}
 
         <h2 class="form-section-title">${t('sell.photos')}</h2>
         <div class="field span-all">
@@ -4575,6 +4843,13 @@ function renderSellForm() {
       if (value === OTHER) $('#s-model-other').focus();
     }
   });
+  // В расходе — цифры и одна запятая или точка: «6,5»
+  $('#sell-form').addEventListener('input', (e) => {
+    const el = e.target;
+    if (!el.matches('[data-decimal]')) return;
+    const clean = el.value.replace(/[^\d.,]/g, '').replace(/([.,]\d*)[.,]/g, '$1');
+    if (clean !== el.value) el.value = clean;
+  });
   // В цене, пробеге и мощности оставляем только цифры (в том числе при вставке текста)
   $('#sell-form').addEventListener('input', (e) => {
     const el = e.target;
@@ -4584,6 +4859,72 @@ function renderSellForm() {
     el.setSelectionRange(caret, caret);
   });
   $('#sell-form').addEventListener('submit', onSellSubmit);
+}
+
+/* Дополнительные характеристики и комплектация в форме — все необязательные.
+   Показываются, только когда база их уже умеет хранить (версия схемы 4) */
+function extraFieldsHtml() {
+  if (db.schema < 4) return '';
+  const inspectionYears = Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 1 + i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  return `
+        <h2 class="form-section-title">${t('sell.extra')}</h2>
+        <div class="field">
+          <label for="s-engine">${t('sell.engine')}</label>
+          <input id="s-engine" name="engineVolume" type="text" inputmode="numeric" pattern="[0-9]*" data-digits maxlength="5" autocomplete="off" placeholder="1995">
+        </div>
+        <div class="field">
+          <label for="s-drive">${t('sell.drive')}</label>
+          <select id="s-drive" name="drive">${codedOptions('drive', DRIVES, '', '—')}</select>
+        </div>
+        <div class="field">
+          <label for="s-seats">${t('sell.seats')}</label>
+          <select id="s-seats" name="seats">${selectOptions(SEATS, '', '—')}</select>
+        </div>
+        <div class="field">
+          <label for="s-condition">${t('sell.condition')}</label>
+          <select id="s-condition" name="condition">${codedOptions('condition', CONDITIONS, '', '—')}</select>
+        </div>
+        <div class="field">
+          <label for="s-customs">${t('sell.customs')}</label>
+          <select id="s-customs" name="customs">${selectOptions(['yes', 'no'], '', '—', (v) => t(`common.${v}`))}</select>
+        </div>
+        <div class="field">
+          <span class="label" id="s-inspection-label">${t('sell.inspection')}</span>
+          <div class="range" role="group" aria-labelledby="s-inspection-label">
+            <select id="s-insp-month" name="inspMonth" aria-label="${esc(t('sell.month'))}">${selectOptions(months, '', t('sell.month'), monthName)}</select>
+            <select id="s-insp-year" name="inspYear" aria-label="${esc(t('sell.yearShort'))}">${selectOptions(inspectionYears, '', t('sell.yearShort'))}</select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="s-consumption">${t('sell.consumption')}</label>
+          <input id="s-consumption" name="consumption" type="text" inputmode="decimal" data-decimal maxlength="4" autocomplete="off" placeholder="6,5">
+        </div>
+        <div class="field">
+          <label for="s-eco">${t('sell.eco')}</label>
+          <select id="s-eco" name="eco">${codedOptions('eco', ECO_CLASSES, '', '—')}</select>
+        </div>
+        <div class="field">
+          <label for="s-interior-color">${t('sell.interiorColor')}</label>
+          <select id="s-interior-color" name="interiorColor">${codedOptions('color', INTERIOR_COLORS, '', '—')}</select>
+        </div>
+        <div class="field">
+          <label for="s-interior-material">${t('sell.interiorMaterial')}</label>
+          <select id="s-interior-material" name="interiorMaterial">${codedOptions('material', MATERIALS, '', '—')}</select>
+        </div>
+
+        <h2 class="form-section-title">${t('sell.features')}</h2>
+        <fieldset class="field span-all features-field">
+          <legend class="visually-hidden">${t('sell.features')}</legend>
+          <div class="features-grid">${FEATURES.map((f) => `<label class="check">
+            <input type="checkbox" name="features" value="${f}"><span>${t(`feature.${f}`)}</span></label>`).join('')}</div>
+        </fieldset>
+`;
+}
+
+// Галочки комплектации (при редактировании и после смены языка)
+function setFeatureChecks(form, list) {
+  form.querySelectorAll('input[name="features"]').forEach((box) => { box.checked = list.includes(box.value); });
 }
 
 /* Марка и модель в форме: выпадающие списки из справочника и «Другая» с полем для ввода.
@@ -4698,7 +5039,8 @@ async function onSellSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const errorEl = $('#sell-error');
-  const data = Object.fromEntries(new FormData(form));
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
   const trimmed = (k) => (data[k] || '').trim();
 
   if (publishing) return;
@@ -4723,6 +5065,33 @@ async function onSellSubmit(e) {
   const doors = DOORS.includes(Number(data.doors)) ? Number(data.doors) : null;
   if (!VEHICLES.includes(data.vehicle)) errors.push(t('field.vehicle'));
   if (!FUELS.includes(data.fuel)) errors.push(t('field.fuel'));
+
+  // Дополнительные поля (если база их уже хранит). Пустое поле — null
+  let extra = {};
+  if (db.schema >= 4) {
+    const engine = trimmed('engineVolume') ? Number(trimmed('engineVolume')) : null;
+    if (engine !== null && (!digits('engineVolume') || engine < 50 || engine > 20000)) errors.push(t('field.engine'));
+    const consumptionText = trimmed('consumption').replace(',', '.');
+    const consumption = consumptionText ? Number(consumptionText) : null;
+    if (consumption !== null && (!/^\d{1,2}(\.\d)?$/.test(consumptionText) || consumption <= 0)) errors.push(t('field.consumption'));
+    const month = Number(data.inspMonth) || 0;
+    const inspYear = Number(data.inspYear) || 0;
+    if (!month !== !inspYear) errors.push(t('field.inspection'));
+    const pick = (value, list) => (list.includes(value) ? value : null);
+    extra = {
+      engine_volume: engine,
+      drive: pick(data.drive, DRIVES),
+      seats: pick(Number(data.seats), SEATS),
+      condition: pick(data.condition, CONDITIONS),
+      customs_cleared: data.customs === 'yes' ? true : data.customs === 'no' ? false : null,
+      inspection_until: month && inspYear ? `${inspYear}-${String(month).padStart(2, '0')}-01` : null,
+      fuel_consumption: consumption,
+      eco_class: pick(data.eco, ECO_CLASSES),
+      interior_color: pick(data.interiorColor, INTERIOR_COLORS),
+      interior_material: pick(data.interiorMaterial, MATERIALS),
+      features: formData.getAll('features').filter((f) => FEATURES.includes(f)),
+    };
+  }
 
   if (errors.length) {
     errorEl.textContent = t('sell.check', { fields: errors.join(', ') });
@@ -4750,6 +5119,7 @@ async function onSellSubmit(e) {
     city: trimmed('city'),
     phone: trimmed('phone'),
     description: trimmed('description'),
+    ...extra,
   };
 
   // Сначала загружаем новые фото в Storage, потом сохраняем объявление со ссылками на них.
@@ -5166,7 +5536,7 @@ document.addEventListener('click', (e) => {
      #/sell, #/sell/<id>        новое объявление / редактирование
      #/account/<вкладка>        личный кабинет: profile, messages, listings, security
      #/account/messages/<id>    открытый чат
-     #/page/<id>, #/favorites, #/compare
+     #/page/<id>, #/favorites, #/compare, #/user/<логин> (страница продавца)
    Адрес — главный источник правды: по нему восстанавливается страница при загрузке
    и при «Назад»/«Вперёд». Пути к картинкам (img/...) от решётки не зависят. */
 
@@ -5192,6 +5562,7 @@ function routeToHash({ name, param }) {
     }
     case 'my': return '#/account/listings';
     case 'page': return `#/page/${enc(param || '')}`;
+    case 'user': return `#/user/${enc(param || '')}`;
     case 'favorites': return '#/favorites';
     case 'compare': return '#/compare';
     default: return '#/';
@@ -5215,6 +5586,7 @@ function hashToRoute(hash) {
     }
     case 'car':
     case 'page':
+    case 'user':
       return { name, param: rest[0] || '' };
     case 'sell':
       return { name, param: rest[0] || null };
@@ -5295,7 +5667,7 @@ function router({ keepScroll = false } = {}) {
   galleryStep = null;
   // В разделе «Сообщения» на телефоне прячем плавающую кнопку, чтобы она не закрывала поле ввода
   document.body.classList.toggle('in-messages', route === 'account' && String(param || '').startsWith('messages'));
-  app.classList.toggle('container-wide', !['car', 'sell', 'my', 'account', 'page', 'search', 'favorites', 'compare'].includes(route));
+  app.classList.toggle('container-wide', !['car', 'sell', 'my', 'account', 'page', 'search', 'favorites', 'compare', 'user'].includes(route));
 
   switch (route) {
     case 'car':
@@ -5322,6 +5694,10 @@ function router({ keepScroll = false } = {}) {
       renderNav('favorites');
       viewFavorites();
       break;
+    case 'user':
+      renderNav('user');
+      viewUser(param || '');
+      break;
     case 'compare':
       renderNav('compare');
       viewCompare();
@@ -5341,7 +5717,7 @@ function router({ keepScroll = false } = {}) {
 }
 
 // Страницы, которые можно тихо перерисовать, когда с сервера пришли новые объявления
-const LIVE_ROUTES = ['home', 'search', 'car', 'favorites', 'compare'];
+const LIVE_ROUTES = ['home', 'search', 'car', 'favorites', 'compare', 'user'];
 
 function refreshInBackground() {
   const route = currentRoute;
