@@ -71,7 +71,7 @@ create table if not exists public.listings (
   mileage      int  not null check (mileage >= 0),
   price        int  not null check (price > 0),
   fuel         text not null check (fuel in ('petrol', 'diesel', 'hybrid', 'electric', 'gas')),
-  transmission text not null default '' check (transmission in ('', 'automatic', 'manual')),
+  transmission text not null default '' check (transmission in ('', 'manual', 'automatic', 'cvt', 'robot', 'semiauto')),
   power        int  check (power is null or power between 1 and 3000),
   body         text not null default '' check (char_length(body) <= 30),
   color        text not null default '' check (char_length(color) <= 60),
@@ -85,6 +85,16 @@ create table if not exists public.listings (
 alter table public.listings drop constraint if exists listings_year_check;
 alter table public.listings add constraint listings_year_check check (year between 1930 and 2100);
 alter table public.listings add column if not exists doors int check (doors is null or doors between 1 and 9);
+-- коробки передач: механика, автомат, вариатор, робот, полуавтомат
+alter table public.listings drop constraint if exists listings_transmission_check;
+alter table public.listings add constraint listings_transmission_check
+  check (transmission in ('', 'manual', 'automatic', 'cvt', 'robot', 'semiauto'));
+
+-- Версия схемы: сайт по ней понимает, что база умеет (годы с 1930, двери, новые коробки).
+-- Меняя схему, увеличьте число и в index.html проверьте db.schema
+create or replace function public.schema_version() returns int
+language sql immutable as $$ select 3 $$;
+grant execute on function public.schema_version() to anon, authenticated;
 
 create index if not exists listings_created_at on public.listings (created_at desc);
 create index if not exists listings_owner on public.listings (owner);

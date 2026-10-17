@@ -1016,7 +1016,8 @@ const OLD_KEYS = ['am_users', 'am_session', 'am_listings', 'am_seeded_v5', 'am_c
 
 /* Значения характеристик хранятся кодами, а на экран выводятся переводом */
 const FUELS = ['petrol', 'diesel', 'hybrid', 'electric', 'gas'];
-const TRANSMISSIONS = ['automatic', 'manual'];
+// Коробки передач: механика, автомат, вариатор, робот, полуавтомат
+const TRANSMISSIONS = ['manual', 'automatic', 'cvt', 'robot', 'semiauto'];
 const BODIES = ['sedan', 'hatchback', 'wagon', 'suv', 'coupe', 'convertible', 'minivan', 'pickup'];
 const COLORS = ['white', 'black', 'silver', 'grey', 'blue', 'lightblue', 'red', 'burgundy', 'green', 'brown', 'beige',
   'yellow', 'orange', 'purple', 'gold', 'other'];
@@ -1025,7 +1026,7 @@ const MIN_YEAR = 1930;
 // Объявления, сохранённые до появления языков, содержат русские значения
 const LEGACY_VALUES = {
   'Бензин': 'petrol', 'Дизель': 'diesel', 'Гибрид': 'hybrid', 'Электро': 'electric', 'Газ': 'gas',
-  'Автомат': 'automatic', 'Механика': 'manual',
+  'Автомат': 'automatic', 'Механика': 'manual', 'Вариатор': 'cvt', 'Робот': 'robot', 'Полуавтомат': 'semiauto',
   'Седан': 'sedan', 'Хэтчбек': 'hatchback', 'Универсал': 'wagon', 'Внедорожник': 'suv', 'Купе': 'coupe',
   'Кабриолет': 'convertible', 'Минивэн': 'minivan', 'Пикап': 'pickup',
 };
@@ -1325,6 +1326,9 @@ const I18N = {
     'fuel.gas': 'Газ',
     'transmission.automatic': 'Автомат',
     'transmission.manual': 'Механика',
+    'transmission.cvt': 'Вариатор',
+    'transmission.robot': 'Робот',
+    'transmission.semiauto': 'Полуавтомат',
     'body.sedan': 'Седан',
     'body.hatchback': 'Хэтчбек',
     'body.wagon': 'Универсал',
@@ -1769,6 +1773,9 @@ const I18N = {
     'fuel.gas': 'LPG/CNG',
     'transmission.automatic': 'Automatic',
     'transmission.manual': 'Manual',
+    'transmission.cvt': 'CVT',
+    'transmission.robot': 'Automated manual',
+    'transmission.semiauto': 'Semi-automatic',
     'body.sedan': 'Saloon',
     'body.hatchback': 'Hatchback',
     'body.wagon': 'Estate',
@@ -2026,9 +2033,10 @@ const db = {
   me: null,            // кто вошёл: { id, username, email, phone }
   loadedAt: 0,
   failed: false,
-  // Обновлена ли схема базы (supabase/schema.sql): год выпуска с 1930 и колонка doors.
-  // Пока нет — в форме годы с 1950, а поля «Двери» нет, чтобы сохранение не ломалось
-  schemaV2: false,
+  // Версия схемы базы (функция schema_version в supabase/schema.sql; 1 — если её ещё нет).
+  // С версии 3: годы с 1930, колонка doors, новые коробки передач. Пока база старее,
+  // форма их не предлагает, чтобы сохранение не ломалось
+  schema: 1,
 };
 
 const PROFILE_COLS = 'id, username, name, city, email, telegram, avatar, created_at';
@@ -2095,9 +2103,9 @@ async function loadData() {
     const [profiles, listings, schema] = await Promise.all([
       sb.from('profiles').select(PROFILE_COLS),
       sb.from('listings').select('*').order('created_at', { ascending: false }).limit(1000),
-      sb.from('listings').select('doors').limit(1),
+      sb.rpc('schema_version'),
     ]);
-    db.schemaV2 = !schema.error;
+    db.schema = schema.error ? 1 : Number(schema.data) || 1;
     const profileRows = must(profiles);
     const listingRows = must(listings);
     db.users.clear();
@@ -2730,7 +2738,9 @@ const brandKey = (name) => (name ? BRAND_INDEX.get(normBrand(name)) || String(na
 // Годы выпуска — от текущего до 1930-го, новые сверху (в форме подачи и в поиске)
 const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - MIN_YEAR + 1 }, (_, i) => CURRENT_YEAR - i);
 // В форме подачи — пока база не обновлена, только с 1950 (более ранние годы база не принимает)
-const sellYears = () => YEAR_OPTIONS.filter((y) => y >= (db.schemaV2 ? MIN_YEAR : 1950));
+const sellYears = () => YEAR_OPTIONS.filter((y) => y >= (db.schema >= 3 ? MIN_YEAR : 1950));
+// Коробки в форме подачи: пока база не обновлена — только механика и автомат
+const sellTransmissions = () => (db.schema >= 3 ? TRANSMISSIONS : ['manual', 'automatic']);
 const PRICE_OPTIONS = [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
 const KM_OPTIONS = [5000, 10000, 20000, 30000, 50000, 75000, 100000, 125000, 150000, 200000];
 
@@ -4464,7 +4474,7 @@ function renderSellForm() {
         <h2 class="form-section-title">${t('sell.specs')}</h2>
         <div class="field">
           <label for="s-transmission">${t('sell.transmission')}</label>
-          <select id="s-transmission" name="transmission">${codedOptions('transmission', TRANSMISSIONS, '', '—')}</select>
+          <select id="s-transmission" name="transmission">${codedOptions('transmission', sellTransmissions(), '', '—')}</select>
         </div>
         <div class="field">
           <label for="s-power">${t('sell.power')}</label>
@@ -4474,7 +4484,7 @@ function renderSellForm() {
           <label for="s-body">${t('sell.body')}</label>
           <select id="s-body" name="body">${codedOptions('body', BODIES, '', '—')}</select>
         </div>
-        ${db.schemaV2 ? `<div class="field">
+        ${db.schema >= 3 ? `<div class="field">
           <label for="s-doors">${t('sell.doors')}</label>
           <select id="s-doors" name="doors">${selectOptions(DOORS, '', '—')}</select>
         </div>` : ''}
@@ -4730,7 +4740,7 @@ async function onSellSubmit(e) {
     price,
     vehicle: data.vehicle,
     fuel: data.fuel,
-    transmission: data.transmission || '',
+    transmission: sellTransmissions().includes(data.transmission) ? data.transmission : '',
     power,
     body: data.body || '',
     // Цвет — код из списка; старый цвет текстом (при редактировании) сохраняем как был
