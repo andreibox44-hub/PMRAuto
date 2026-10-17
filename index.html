@@ -608,6 +608,7 @@ main.container.container-wide { max-width: 1680px; }
 .sidebar-head h2 { font-size: 1.05rem; }
 .refine-form { display: flex; flex-direction: column; gap: 14px; }
 .results-grid { grid-area: list; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); align-content: start; }
+.btn-add span { font-size: 1.15em; line-height: 1; font-weight: 700; }
 .empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 
 /* ---------- Sell form: vehicle type ---------- */
@@ -1458,9 +1459,8 @@ const I18N = {
 
     'my.title': 'Мои объявления',
     'my.none': 'У вас пока нет объявлений',
-    'my.emptyTitle': 'Здесь появятся ваши объявления',
     'my.emptyText': 'Разместите первое — это займёт пару минут.',
-    'my.sell': 'Выставить машину',
+    'my.add': 'Добавить машину',
 
     'sell.title': 'Выставить машину на продажу',
     'sell.editTitle': 'Редактирование объявления',
@@ -1981,9 +1981,8 @@ const I18N = {
 
     'my.title': 'My listings',
     'my.none': 'You have no listings yet',
-    'my.emptyTitle': 'Your listings will appear here',
     'my.emptyText': 'Post your first one, it only takes a couple of minutes.',
-    'my.sell': 'Sell your car',
+    'my.add': 'Add a car',
 
     'sell.title': 'Sell your car',
     'sell.editTitle': 'Edit listing',
@@ -4383,19 +4382,21 @@ function renderProfileTab(user) {
 
 function renderListingsTab(user) {
   const mine = getListings().filter((l) => l.owner === user).sort(SORTERS.new);
+  // «+ Добавить машину» открывает ту же форму подачи; без объявлений — кнопка по центру
+  const addBtn = (size) => `<a href="#" data-go="sell" class="btn btn-primary btn-add${size}"><span aria-hidden="true">+</span>${t('my.add')}</a>`;
 
   $('#account-main').innerHTML = `
     <div class="page-head">
       <div>
         <h2 class="account-title">${t('my.title')}</h2>
-        <p>${mine.length ? `${mine.length} ${plural('plural.listings', mine.length)}` : t('my.none')}</p>
+        ${mine.length ? `<p>${mine.length} ${plural('plural.listings', mine.length)}</p>` : ''}
       </div>
-      <a href="#" data-go="sell" class="btn btn-primary">${t('my.sell')}</a>
+      ${mine.length ? addBtn(' btn-sm') : ''}
     </div>
     <div class="grid account-grid" id="my-grid">
       ${mine.length ? mine.map((car) => cardHtml(car, { owner: true })).join('')
-        : `<div class="empty"><h3>${t('my.emptyTitle')}</h3><p>${t('my.emptyText')}</p>
-           <p><a href="#" data-go="sell" class="btn btn-primary">${t('my.sell')}</a></p></div>`}
+        : `<div class="empty my-empty"><h3>${t('my.none')}</h3><p>${t('my.emptyText')}</p>
+           <div class="empty-actions">${addBtn('')}</div></div>`}
     </div>`;
 
   $('#my-grid').addEventListener('click', async (e) => {
