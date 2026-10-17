@@ -285,6 +285,14 @@ textarea { resize: vertical; min-height: 120px; }
 .lang-menu button.active { font-weight: 700; }
 .lang-code { font-size: .75rem; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .lang-menu button.active .lang-code { color: var(--primary); font-size: .95rem; }
+.cur-sign { font-size: 1rem; line-height: 1; }
+.cur-rate { margin: 4px 0 0; padding: 8px 10px 4px; border-top: 1px solid var(--border); font-size: .78rem; color: var(--muted); }
+/* Цена, пересчитанная из евро: «≈», исходная цена — при наведении */
+.price-approx { cursor: help; }
+.price-original { margin: -2px 0 10px; font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.price-input { display: flex; gap: 6px; }
+.price-input input { flex: 1; }
+.price-input select { width: auto; flex: none; }
 
 .empty {
   grid-column: 1 / -1;
@@ -877,6 +885,7 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   .nav .btn { padding: 8px 12px; font-size: .88rem; }
   .lang-toggle { height: 38px; }
   .lang-menu { right: auto; left: 0; }
+  .cur-code { display: none; }
   .vehicle-tabs, .home-search .vehicle-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vehicle-tab { min-height: 72px; }
   .quick-search, .home-search .quick-search { grid-template-columns: minmax(0, 1fr); }
@@ -1028,9 +1037,11 @@ const SUPABASE_URL = 'https://pguqsuamvakmoejnqhze.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ksXY1x3QOriOL924Xxey8Q_fCCTPFm8';
 const PHOTO_BUCKET = 'photos';
 
-// В браузере хранятся только язык, избранное, сравнение и время последнего вопроса
+// В браузере хранятся только язык, валюта, курс, избранное, сравнение и время последнего вопроса
 const KEYS = {
   lang: 'am_lang',
+  currency: 'am_currency',
+  rate: 'am_rate',
   helpLast: 'am_help_last',
   favorites: 'am_favorites',
   compare: 'am_compare',
@@ -1090,6 +1101,12 @@ const I18N = {
     'meta.close': 'Закрыть',
     'meta.home': 'PMRAuto — на главную',
     'meta.language': 'Язык',
+    'meta.currency': 'Валюта',
+    'currency.EUR': 'Евро',
+    'currency.USD': 'Доллар США',
+    'currency.rate': 'Курс: {rate}',
+    'currency.rateDate': 'ЕЦБ на {date}',
+    'price.original': 'Цена в евро: {price}',
     'meta.title': 'PMRAuto — покупка и продажа автомобилей в Приднестровье и Молдове',
     'meta.description': 'Объявления о продаже автомобилей, мотоциклов, грузовиков и фургонов в Приднестровье и Молдове. Поиск по марке, цене, году и городу, чат с продавцом.',
 
@@ -1272,7 +1289,7 @@ const I18N = {
     'filters.searchPh': 'Например, BMW 320d',
     'filters.brand': 'Марка',
     'filters.allBrands': 'Все марки',
-    'filters.price': 'Цена, €',
+    'filters.price': 'Цена, {cur}',
     'filters.from': 'от',
     'filters.to': 'до',
     'filters.priceFrom': 'Цена от',
@@ -1453,7 +1470,8 @@ const I18N = {
     'delete.done': 'Объявление удалено',
 
     'my.title': 'Мои объявления',
-    'my.none': 'У вас пока нет объявлений',    'my.emptyTitle': 'Здесь появятся ваши объявления',
+    'my.none': 'У вас пока нет объявлений',
+    'my.emptyTitle': 'Здесь появятся ваши объявления',
     'my.emptyText': 'Разместите первое — это займёт пару минут.',
     'my.sell': 'Выставить машину',
 
@@ -1472,7 +1490,10 @@ const I18N = {
     'sell.model': 'Модель',
     'sell.year': 'Год выпуска',
     'sell.mileage': 'Пробег, км',
-    'sell.price': 'Цена, €',
+    'sell.price': 'Цена',
+    'sell.priceCurrency': 'Валюта цены',
+    'sell.priceInEur': 'На сайте сохранится в евро: ≈ {price}',
+    'sell.priceStoredEur': 'Цена сохранится в евро по текущему курсу',
     'sell.fuel': 'Тип топлива',
     'sell.choose': 'Выберите',
     'sell.specs': 'Характеристики',
@@ -1509,7 +1530,8 @@ const I18N = {
     'sell.submit': 'Опубликовать объявление',
     'sell.save': 'Сохранить изменения',
     'sell.processing': 'Подождите, фотографии ещё обрабатываются…',
-    'sell.check': 'Проверьте поля: {fields}.',    'sell.saveFailed': 'Не удалось сохранить объявление.',
+    'sell.check': 'Проверьте поля: {fields}.',
+    'sell.saveFailed': 'Не удалось сохранить объявление.',
     'sell.uploading': 'Загружаем фото: {n} из {total}…',
     'sell.publishing': 'Публикуем…',
     'sell.published': 'Объявление опубликовано',
@@ -1605,6 +1627,12 @@ const I18N = {
     'meta.close': 'Close',
     'meta.home': 'PMRAuto home',
     'meta.language': 'Language',
+    'meta.currency': 'Currency',
+    'currency.EUR': 'Euro',
+    'currency.USD': 'US dollar',
+    'currency.rate': 'Rate: {rate}',
+    'currency.rateDate': 'ECB, {date}',
+    'price.original': 'Price in euros: {price}',
     'meta.title': 'PMRAuto — buy and sell cars in Transnistria and Moldova',
     'meta.description': 'Cars, motorcycles, trucks and vans for sale in Transnistria and Moldova. Search by make, price, year and city, and chat with the seller.',
 
@@ -1787,7 +1815,7 @@ const I18N = {
     'filters.searchPh': 'e.g. BMW 320d',
     'filters.brand': 'Make',
     'filters.allBrands': 'All makes',
-    'filters.price': 'Price, €',
+    'filters.price': 'Price, {cur}',
     'filters.from': 'from',
     'filters.to': 'to',
     'filters.priceFrom': 'Price from',
@@ -1968,7 +1996,8 @@ const I18N = {
     'delete.done': 'Listing deleted',
 
     'my.title': 'My listings',
-    'my.none': 'You have no listings yet',    'my.emptyTitle': 'Your listings will appear here',
+    'my.none': 'You have no listings yet',
+    'my.emptyTitle': 'Your listings will appear here',
     'my.emptyText': 'Post your first one, it only takes a couple of minutes.',
     'my.sell': 'Sell your car',
 
@@ -1987,7 +2016,10 @@ const I18N = {
     'sell.model': 'Model',
     'sell.year': 'Year',
     'sell.mileage': 'Mileage, km',
-    'sell.price': 'Price, €',
+    'sell.price': 'Price',
+    'sell.priceCurrency': 'Price currency',
+    'sell.priceInEur': 'Will be saved in euros: ≈ {price}',
+    'sell.priceStoredEur': 'The price will be saved in euros at the current rate',
     'sell.fuel': 'Fuel type',
     'sell.choose': 'Choose',
     'sell.specs': 'Specifications',
@@ -2024,7 +2056,8 @@ const I18N = {
     'sell.submit': 'Publish listing',
     'sell.save': 'Save changes',
     'sell.processing': 'Please wait, photos are still being processed…',
-    'sell.check': 'Please check: {fields}.',    'sell.saveFailed': 'Couldn’t save the listing.',
+    'sell.check': 'Please check: {fields}.',
+    'sell.saveFailed': 'Couldn’t save the listing.',
     'sell.uploading': 'Uploading photos: {n} of {total}…',
     'sell.publishing': 'Publishing…',
     'sell.published': 'Listing published',
@@ -2156,7 +2189,6 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 const num = (n) => new Intl.NumberFormat(LOCALES[lang]).format(n);
-const fmtPrice = (n) => `${num(n)} €`;
 const fmtKm = (n) => `${num(n)} ${t('unit.km')}`;
 const fmtDate = (ts) => new Date(ts).toLocaleDateString(LOCALES[lang], { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -2174,6 +2206,66 @@ const store = {
     localStorage.setItem(key, JSON.stringify(value));
   },
 };
+
+/* ---------- Валюта ----------
+   В базе цены хранятся в евро. На экран выводим в валюте, выбранной в шапке: пересчитанную
+   цену помечаем «≈», а исходная цена в евро видна при наведении. Курс берём раз в сутки
+   с frankfurter (курс ЕЦБ); если сервис недоступен — последний сохранённый курс */
+const CURRENCIES = { EUR: '€', USD: '$' };
+const BASE_CURRENCY = 'EUR';
+const RATE_URL = 'https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD';
+const RATE_MAX_AGE = 24 * 60 * 60 * 1000;
+// Курс на случай, когда сервис недоступен с самого первого открытия сайта
+const RATE_FALLBACK = { USD: 1.1253, date: '2026-10-16', fetchedAt: 0 };
+
+function detectCurrency() {
+  try {
+    const saved = localStorage.getItem(KEYS.currency);
+    if (CURRENCIES[saved]) return saved;
+  } catch { /* хранилище недоступно */ }
+  return BASE_CURRENCY;
+}
+
+function savedRate() {
+  const r = store.get(KEYS.rate, null);
+  return r && Number.isFinite(r.USD) && r.USD > 0 ? r : RATE_FALLBACK;
+}
+
+let currency = detectCurrency();
+let rate = savedRate();
+
+// Сколько единиц валюты в одном евро
+const rateOf = (cur) => (cur === 'USD' ? rate.USD : 1);
+// Пересчёт суммы из одной валюты в другую, до целых
+const convert = (amount, from, to) => (from === to ? Number(amount) : Math.round((amount / rateOf(from)) * rateOf(to)));
+// Цена объявления (в евро) в выбранной валюте — её видит покупатель, по ней же работает фильтр цены
+const shownPrice = (eur) => convert(eur, BASE_CURRENCY, currency);
+// 22 900 € · 24 770 $ (в английском — $24,770)
+const fmtMoney = (n, cur = currency) => (cur === 'USD' && lang === 'en' ? `$${num(n)}` : `${num(n)} ${CURRENCIES[cur]}`);
+const fmtEuro = (n) => fmtMoney(n, BASE_CURRENCY);
+
+// Цена для страницы: пересчитанная — с «≈» и исходной ценой в евро при наведении
+function fmtPrice(eur) {
+  if (currency === BASE_CURRENCY) return esc(fmtEuro(eur));
+  return `<span class="price-approx" title="${esc(t('price.original', { price: fmtEuro(eur) }))}">≈ ${esc(fmtMoney(shownPrice(eur)))}</span>`;
+}
+
+// Курс раз в сутки. Без ответа сервиса остаётся последний сохранённый курс
+async function updateRate() {
+  if (Date.now() - (rate.fetchedAt || 0) < RATE_MAX_AGE) return false;
+  try {
+    const res = await fetch(RATE_URL, { signal: AbortSignal.timeout?.(8000) });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const usd = Number(data?.rates?.USD);
+    if (!Number.isFinite(usd) || usd <= 0) return false;
+    rate = { USD: usd, date: String(data.date || ''), fetchedAt: Date.now() };
+    try { store.set(KEYS.rate, rate); } catch { /* хранилище недоступно — курс только на этот раз */ }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 let toastTimer;
 function toast(message, type = '') {
@@ -2701,31 +2793,56 @@ function langSwitchHtml() {
   </div>`;
 }
 
-function toggleLangMenu(open) {
-  const menu = $('#lang-menu');
-  const toggle = $('#lang-toggle');
+// Переключатель валюты рядом с языком: такое же меню, внизу — курс, по которому пересчитываем
+function currencySwitchHtml() {
+  const rateDate = /^\d{4}-\d{2}-\d{2}$/.test(rate.date) ? new Date(`${rate.date}T12:00:00`).toLocaleDateString(LOCALES[lang]) : '';
+  return `<div class="lang-picker" id="cur-picker">
+    <button type="button" class="lang-toggle" id="cur-toggle" aria-haspopup="menu" aria-expanded="false"
+      aria-controls="cur-menu" aria-label="${t('meta.currency')}: ${t(`currency.${currency}`)}" title="${t('meta.currency')}">
+      <span class="cur-sign" aria-hidden="true">${CURRENCIES[currency]}</span><span class="cur-code">${currency}</span>
+    </button>
+    <div class="lang-menu" id="cur-menu" role="menu" hidden>
+      ${Object.keys(CURRENCIES).map((c) => `<button type="button" role="menuitemradio" data-cur="${c}"
+        aria-checked="${c === currency}" class="${c === currency ? 'active' : ''}">
+        <span>${CURRENCIES[c]} ${t(`currency.${c}`)}</span><span class="lang-code">${c === currency ? '✓' : c}</span>
+      </button>`).join('')}
+      <p class="cur-rate">${esc(t('currency.rate', { rate: `1 € = ${new Intl.NumberFormat(LOCALES[lang], { maximumFractionDigits: 4 }).format(rate.USD)} $` }))}${rateDate ? `<br>${esc(t('currency.rateDate', { date: rateDate }))}` : ''}</p>
+    </div>
+  </div>`;
+}
+
+// Меню в шапке: язык (lang) и валюта (cur)
+const MENUS = ['lang', 'cur'];
+
+function toggleMenu(kind, open) {
+  const menu = $(`#${kind}-menu`);
+  const toggle = $(`#${kind}-toggle`);
   if (!menu) return;
   const show = open ?? menu.hidden;
   menu.hidden = !show;
   toggle.setAttribute('aria-expanded', String(show));
-  if (show) menu.querySelector('[aria-checked="true"]')?.focus();
+  if (show) {
+    MENUS.filter((k) => k !== kind).forEach((k) => toggleMenu(k, false));
+    menu.querySelector('[aria-checked="true"]')?.focus();
+  }
 }
 
-// Закрываем меню языков по клику мимо него и по Esc; стрелками ходим по пунктам
+// Закрываем меню по клику мимо него и по Esc; стрелками ходим по пунктам
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('#lang-picker')) toggleLangMenu(false);
+  MENUS.forEach((k) => { if (!e.target.closest(`#${k}-picker`)) toggleMenu(k, false); });
 });
 document.addEventListener('keydown', (e) => {
-  const menu = $('#lang-menu');
-  if (!menu || menu.hidden) return;
+  const kind = MENUS.find((k) => $(`#${k}-menu`) && !$(`#${k}-menu`).hidden);
+  if (!kind) return;
+  const menu = $(`#${kind}-menu`);
   if (e.key === 'Escape') {
-    toggleLangMenu(false);
-    $('#lang-toggle').focus();
+    toggleMenu(kind, false);
+    $(`#${kind}-toggle`).focus();
     return;
   }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
-    const items = [...menu.querySelectorAll('[data-lang]')];
+    const items = [...menu.querySelectorAll('button[role="menuitemradio"]')];
     const i = items.indexOf(document.activeElement);
     items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
   }
@@ -2803,7 +2920,27 @@ function setLang(next) {
   lang = next;
   try { localStorage.setItem(KEYS.lang, lang); } catch { /* ignore */ }
   applyStaticText();
+  rerender();
+}
 
+function setCurrency(next) {
+  if (!CURRENCIES[next] || next === currency) return;
+  const prev = currency;
+  currency = next;
+  try { localStorage.setItem(KEYS.currency, currency); } catch { /* ignore */ }
+  // Цена «от» и «до» в поиске задана в выбранной валюте — пересчитываем её в новую
+  for (const k of ['priceFrom', 'priceTo']) {
+    if (filters[k] !== '' && Number.isFinite(Number(filters[k]))) filters[k] = String(convert(Number(filters[k]), prev, next));
+  }
+  if (currentRoute.name === 'search') {
+    currentRoute.param = { ...filters };
+    setHistory(currentRoute, true);
+  }
+  rerender();
+}
+
+// Перерисовка открытой страницы после смены языка или валюты: введённое в формах сохраняем
+function rerender() {
   // На форме продажи сохраняем всё, что уже введено, включая фото
   const form = $('#sell-form');
   if (currentRoute.name === 'sell' && form) {
@@ -2818,6 +2955,7 @@ function setLang(next) {
     }
     setSellBrandModel(values.vehicle || 'car', brand, model);
     setFeatureChecks(fresh, features);
+    updatePriceHint();
     renderPreviews();
     return;
   }
@@ -2836,7 +2974,7 @@ function setLang(next) {
 function renderNav(route) {
   const user = currentUser();
   const active = (r) => (route === r ? ' active' : '');
-  $('#nav').innerHTML = langSwitchHtml() + (user
+  $('#nav').innerHTML = langSwitchHtml() + currencySwitchHtml() + (user
     ? `<a href="#" data-go="catalog" class="nav-link nav-catalog${active('search')}">${t('nav.catalog')}</a>
        ${savedNavHtml(route)}
        <a href="#" data-go="account" data-param="messages" id="nav-messages" class="nav-link nav-messages${active('messages')}" aria-label="${t('nav.messages')}">
@@ -2856,11 +2994,17 @@ function renderNav(route) {
 }
 
 $('#nav').addEventListener('click', (e) => {
-  if (e.target.closest('#lang-toggle')) toggleLangMenu();
+  if (e.target.closest('#lang-toggle')) toggleMenu('lang');
   const langBtn = e.target.closest('[data-lang]');
   if (langBtn) {
-    toggleLangMenu(false);
+    toggleMenu('lang', false);
     setLang(langBtn.dataset.lang);
+  }
+  if (e.target.closest('#cur-toggle')) toggleMenu('cur');
+  const curBtn = e.target.closest('[data-cur]');
+  if (curBtn) {
+    toggleMenu('cur', false);
+    setCurrency(curBtn.dataset.cur);
   }
   const authBtn = e.target.closest('[data-auth]');
   if (authBtn) openAuth(authBtn.dataset.auth);
@@ -2930,7 +3074,13 @@ const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - MIN_YEAR + 1 }, (_, i) 
 const sellYears = () => YEAR_OPTIONS.filter((y) => y >= (db.schema >= 3 ? MIN_YEAR : 1950));
 // Коробки в форме подачи: пока база не обновлена — только механика и автомат
 const sellTransmissions = () => (db.schema >= 3 ? TRANSMISSIONS : ['manual', 'automatic']);
+// Готовые значения цены в поиске — круглые числа в выбранной валюте
 const PRICE_OPTIONS = [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
+// Цена из ссылки или после смены валюты (22 506 $) может не совпасть с готовыми — добавляем её в список
+const priceOptions = (value) => {
+  const n = Number(value);
+  return value === '' || PRICE_OPTIONS.includes(n) || !Number.isFinite(n) ? PRICE_OPTIONS : [...PRICE_OPTIONS, n].sort((a, b) => a - b);
+};
 const KM_OPTIONS = [5000, 10000, 20000, 30000, 50000, 75000, 100000, 125000, 150000, 200000];
 
 // Города Приднестровья и Молдовы. В фильтре город хранится русским названием, а показывается
@@ -3163,8 +3313,9 @@ function matches(car, f = filters) {
     && (!f.model || modelOf(car) === f.model || normModel(car.model).startsWith(normModel(f.model)))
     && (n(f.yearFrom) === null || car.year >= n(f.yearFrom))
     && (n(f.yearTo) === null || car.year <= n(f.yearTo))
-    && (n(f.priceFrom) === null || car.price >= n(f.priceFrom))
-    && (n(f.priceTo) === null || car.price <= n(f.priceTo))
+    // Цена в фильтре — в выбранной валюте: сравниваем с той ценой, которую видит покупатель
+    && (n(f.priceFrom) === null || shownPrice(car.price) >= n(f.priceFrom))
+    && (n(f.priceTo) === null || shownPrice(car.price) <= n(f.priceTo))
     && (!f.city || cityKey(car) === f.city)
     && (n(f.kmTo) === null || car.mileage <= n(f.kmTo))
     && (!f.fuel || code(car.fuel) === f.fuel)
@@ -3186,7 +3337,7 @@ const codedOptions = (group, codes, selected, placeholder) => selectOptions(code
 
 // Поля поиска — общие для главной и для фильтров на странице результатов
 function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
-  const euro = (v) => `${num(v)} €`;
+  const money = (v) => fmtMoney(v);
   return `
     ${withQuery ? `<div class="field">
       <label for="${p}-q">${t('filters.search')}</label>
@@ -3218,10 +3369,10 @@ function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
       </div>
     </div>
     <div class="field">
-      <span class="label">${t('filters.price')}</span>
+      <span class="label">${t('filters.price', { cur: CURRENCIES[currency] })}</span>
       <div class="range">
-        <select id="${p}-priceFrom" name="priceFrom" aria-label="${t('filters.priceFrom')}">${selectOptions(PRICE_OPTIONS, filters.priceFrom, t('filters.from'), euro)}</select>
-        <select id="${p}-priceTo" name="priceTo" aria-label="${t('filters.priceTo')}">${selectOptions(PRICE_OPTIONS, filters.priceTo, t('filters.to'), euro)}</select>
+        <select id="${p}-priceFrom" name="priceFrom" aria-label="${t('filters.priceFrom')}">${selectOptions(priceOptions(filters.priceFrom), filters.priceFrom, t('filters.from'), money)}</select>
+        <select id="${p}-priceTo" name="priceTo" aria-label="${t('filters.priceTo')}">${selectOptions(priceOptions(filters.priceTo), filters.priceTo, t('filters.to'), money)}</select>
       </div>
     </div>
     <div class="field">
@@ -3448,7 +3599,7 @@ function viewFavorites() {
 
 // Строки таблицы: [подпись, значение для показа, число для поиска лучшего, что лучше]
 const COMPARE_ROWS = [
-  ['cmp.price', (c) => fmtPrice(c.price), (c) => Number(c.price), 'min'],
+  ['cmp.price', (c) => fmtPrice(c.price), (c) => Number(c.price), 'min', true], // уже готовая разметка
   ['spec.year', (c) => c.year, (c) => Number(c.year), 'max'],
   ['spec.mileage', (c) => fmtKm(c.mileage), (c) => Number(c.mileage), 'min'],
   ['spec.power', (c) => (c.power ? `${c.power} ${t('unit.hp')}` : ''), (c) => Number(c.power) || null, 'max'],
@@ -3479,11 +3630,11 @@ function viewCompare() {
     app.innerHTML = head + savedEmptyHtml('cmp');
     return;
   }
-  const rows = COMPARE_ROWS.map(([label, show, getNum, better]) => {
+  const rows = COMPARE_ROWS.map(([label, show, getNum, better, html]) => {
     const best = getNum ? bestValue(cars, getNum, better) : null;
     return `<tr><th scope="row">${t(label)}</th>${cars.map((c) => {
       const isBest = best != null && getNum(c) === best;
-      return `<td${isBest ? ' class="best"' : ''}>${esc(show(c) || '—')}</td>`;
+      return `<td${isBest ? ' class="best"' : ''}>${html ? show(c) : esc(show(c) || '—')}</td>`;
     }).join('')}</tr>`;
   }).join('');
   app.innerHTML = `${head}
@@ -3780,6 +3931,7 @@ function viewDetail(id) {
       <aside class="panel detail-side">
         <h1>${title}</h1>
         <div class="detail-price">${fmtPrice(car.price)}</div>
+        ${currency === BASE_CURRENCY ? '' : `<p class="price-original">${esc(t('price.original', { price: fmtEuro(car.price) }))}</p>`}
         ${saveActionsHtml(car.id)}
         <div class="key-facts">
           <div class="key-fact"><span>${t('detail.year')}</span><b>${esc(car.year)}</b></div>
@@ -4662,7 +4814,8 @@ function fillSellForm(car) {
   const form = $('#sell-form');
   const values = {
     vehicle: vehicleOf(car), year: car.year, mileage: car.mileage,
-    price: car.price, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
+    // В базе цена в евро — при редактировании показываем её как есть, без пересчёта
+    price: car.price, priceCurrency: BASE_CURRENCY, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
     body: code(car.body) || '', doors: car.doors || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
     engineVolume: car.engineVolume || '', drive: car.drive || '', seats: car.seats || '', condition: car.condition || '',
     customs: car.customsCleared == null ? '' : car.customsCleared ? 'yes' : 'no',
@@ -4686,6 +4839,19 @@ function fillSellForm(car) {
     if (form.elements[name]) form.elements[name].value = value;
   }
   setSellBrandModel(values.vehicle, car.brand, car.model);
+  updatePriceHint();
+}
+
+// Цена не в евро: под полем показываем, сколько это будет в евро — так цена сохранится в базе
+const sellPriceEur = (price, cur) => convert(price, CURRENCIES[cur] ? cur : BASE_CURRENCY, BASE_CURRENCY);
+function updatePriceHint() {
+  const form = $('#sell-form');
+  const hint = $('#s-price-hint');
+  if (!form || !hint) return;
+  const price = Number(form.elements.price.value);
+  const cur = form.elements.priceCurrency.value;
+  hint.textContent = cur === BASE_CURRENCY ? ''
+    : price > 0 ? t('sell.priceInEur', { price: fmtEuro(sellPriceEur(price, cur)) }) : t('sell.priceStoredEur');
 }
 
 function renderSellForm() {
@@ -4731,7 +4897,13 @@ function renderSellForm() {
         </div>
         <div class="field">
           <label for="s-price">${t('sell.price')}${req}</label>
-          <input id="s-price" name="price" type="text" inputmode="numeric" pattern="[0-9]*" data-digits required maxlength="8" autocomplete="off" placeholder="18500">
+          <div class="price-input">
+            <input id="s-price" name="price" type="text" inputmode="numeric" pattern="[0-9]*" data-digits required maxlength="8" autocomplete="off" placeholder="18500" aria-describedby="s-price-hint">
+            <select id="s-price-cur" name="priceCurrency" aria-label="${t('sell.priceCurrency')}">
+              ${Object.keys(CURRENCIES).map((c) => `<option value="${c}"${c === currency ? ' selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <span class="hint" id="s-price-hint"></span>
         </div>
         <div class="field">
           <label for="s-fuel">${t('sell.fuel')}${req}</label>
@@ -4858,7 +5030,14 @@ ${extraFieldsHtml()}
     el.value = el.value.replace(/\D/g, '');
     el.setSelectionRange(caret, caret);
   });
+  $('#sell-form').addEventListener('input', (e) => {
+    if (['price', 'priceCurrency'].includes(e.target.name)) updatePriceHint();
+  });
+  $('#sell-form').addEventListener('change', (e) => {
+    if (e.target.name === 'priceCurrency') updatePriceHint();
+  });
   $('#sell-form').addEventListener('submit', onSellSubmit);
+  updatePriceHint();
 }
 
 /* Дополнительные характеристики и комплектация в форме — все необязательные.
@@ -5058,8 +5237,9 @@ async function onSellSubmit(e) {
   const digits = (k) => /^\d+$/.test(trimmed(k));
   const mileage = Number(trimmed('mileage'));
   if (!digits('mileage')) errors.push(t('field.mileage'));
-  const price = Number(trimmed('price'));
-  if (!digits('price') || price <= 0) errors.push(t('field.price'));
+  // Цену вводят в евро или в долларах, а в базе она хранится в евро
+  const price = sellPriceEur(Number(trimmed('price')), data.priceCurrency);
+  if (!digits('price') || !(price > 0)) errors.push(t('field.price'));
   const power = trimmed('power') ? Number(trimmed('power')) : null;
   if (power !== null && (!digits('power') || power < 1 || power > 3000)) errors.push(t('field.power'));
   const doors = DOORS.includes(Number(data.doors)) ? Number(data.doors) : null;
@@ -5551,6 +5731,9 @@ function routeToHash({ name, param }) {
       for (const [k, v] of Object.entries(param || {})) {
         if (k in DEFAULT_FILTERS && v !== DEFAULT_FILTERS[k]) query.set(k, v);
       }
+      // Цена в фильтре — в выбранной валюте; не в евро — указываем валюту, чтобы ссылка
+      // открылась с той же ценой и у того, кто смотрит сайт в другой валюте
+      if ((query.has('priceFrom') || query.has('priceTo')) && currency !== BASE_CURRENCY) query.set('cur', currency);
       const qs = query.toString();
       return `#/search${qs ? `?${qs}` : ''}`;
     }
@@ -5579,7 +5762,15 @@ function hashToRoute(hash) {
   switch (name) {
     case 'search': {
       const param = { ...DEFAULT_FILTERS };
-      for (const [k, v] of new URLSearchParams(qs)) if (k in DEFAULT_FILTERS) param[k] = v;
+      const query = new URLSearchParams(qs);
+      for (const [k, v] of query) if (k in DEFAULT_FILTERS) param[k] = v;
+      // Цена в ссылке без cur — в евро; пересчитываем в валюту, выбранную у нас
+      const from = CURRENCIES[query.get('cur')] ? query.get('cur') : BASE_CURRENCY;
+      for (const k of ['priceFrom', 'priceTo']) {
+        const n = Number(param[k]);
+        if (param[k] !== '' && (!Number.isFinite(n) || n < 0)) param[k] = '';
+        else if (param[k] !== '') param[k] = String(convert(n, from, currency));
+      }
       if (param.vehicle && !VEHICLES.includes(param.vehicle)) param.vehicle = '';
       if (!SORTERS[param.sort]) param.sort = DEFAULT_FILTERS.sort;
       return { name, param };
@@ -5729,10 +5920,16 @@ function refreshInBackground() {
   });
 }
 
-// Синхронизация между вкладками: язык, избранное и сравнение.
+// Синхронизация между вкладками: язык, валюта, курс, избранное и сравнение.
 // Вход и выход Supabase передаёт между вкладками сам (см. onAuthChange)
 window.addEventListener('storage', (e) => {
   if (e.key === KEYS.lang && LANGS[e.newValue]) return setLang(e.newValue);
+  if (e.key === KEYS.currency && CURRENCIES[e.newValue]) return setCurrency(e.newValue);
+  if (e.key === KEYS.rate) {
+    rate = savedRate();
+    onRateChanged();
+    return;
+  }
   if ([KEYS.favorites, KEYS.compare].includes(e.key)) {
     if (['favorites', 'compare'].includes(currentRoute.name)) router({ keepScroll: true });
     else updateSavedUI();
@@ -5744,10 +5941,23 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && booted) {
     refreshInBackground();
     refreshUnread();
+    refreshRate();
   }
 });
 
 let booted = false;
+
+// Свежий курс (раз в сутки) — цены в долларах пересчитываем, если человек сейчас ничего не вводит
+function refreshRate() {
+  updateRate().then((changed) => { if (changed) onRateChanged(); });
+}
+function onRateChanged() {
+  const picker = $('#cur-picker');
+  if (picker) picker.outerHTML = currencySwitchHtml(); // курс в меню валют
+  if (currency === BASE_CURRENCY) return;
+  if (document.activeElement?.matches('input, textarea, select') || !$('#modal').hidden) return;
+  rerender();
+}
 
 async function boot() {
   try { OLD_KEYS.forEach((k) => localStorage.removeItem(k)); } catch { /* хранилище недоступно */ }
@@ -5774,6 +5984,7 @@ async function boot() {
   router();
   subscribeMessages();
   if (db.failed) toast(t('err.load'), 'error');
+  refreshRate();
 
   if (RECOVERY_LINK && db.me) openNewPassword();
   else if (AUTH_LINK_ERROR) toast(t('auth.linkExpired'), 'error');
