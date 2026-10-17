@@ -394,6 +394,7 @@ textarea { resize: vertical; min-height: 120px; }
 .tab { border: 0; background: transparent; padding: 8px; border-radius: 8px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
 .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-extra { margin: -4px 0 0; text-align: center; }
 
 /* ---------- Toast ---------- */
 .toast {
@@ -971,11 +972,15 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   </button>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<!-- Библиотека Supabase (база, вход, фото). integrity — защита от подмены файла на CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"
+  integrity="sha384-KX6Y/AMIv9qA8TLCDul2JatZWeyrJVgj3Xu/0r30Nr05xO8md1+wHAgtdsRV9LoE" crossorigin="anonymous"></script>
 <script>
 'use strict';
 
 /* =========================================================
-   PMRAuto — каталог автомобилей на чистом JS + localStorage
+   PMRAuto — каталог автомобилей на чистом JS
+   Данные (объявления, профили, чаты, фото) — в Supabase, см. supabase/schema.sql
    Языки интерфейса: русский и английский
    ========================================================= */
 
@@ -988,18 +993,22 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
    ╚══════════════════════════════════════════════════════════════════╝ */
 const WEB3FORMS_ACCESS_KEY = '9c5873ae-dd4a-425b-9d7e-3173a4e5bfa7';
 
+/* Подключение к Supabase. Публичный ключ (publishable) можно держать в коде:
+   кто что может читать и менять, решают правила доступа в базе (supabase/schema.sql).
+   Секретный ключ (sb_secret_… / service_role) сюда вставлять нельзя. */
+const SUPABASE_URL = 'https://pguqsuamvakmoejnqhze.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ksXY1x3QOriOL924Xxey8Q_fCCTPFm8';
+const PHOTO_BUCKET = 'photos';
+
+// В браузере хранятся только язык, избранное, сравнение и время последнего вопроса
 const KEYS = {
-  users: 'am_users',
-  session: 'am_session',
-  listings: 'am_listings',
-  seeded: 'am_seeded_v5',
   lang: 'am_lang',
   helpLast: 'am_help_last',
-  chats: 'am_chats',
-  messages: 'am_messages',
   favorites: 'am_favorites',
   compare: 'am_compare',
 };
+// Данные старой версии, когда всё хранилось в браузере. Больше не нужны — удаляем при запуске
+const OLD_KEYS = ['am_users', 'am_session', 'am_listings', 'am_seeded_v5', 'am_chats', 'am_messages'];
 
 /* Значения характеристик хранятся кодами, а на экран выводятся переводом */
 const FUELS = ['petrol', 'diesel', 'hybrid', 'electric', 'gas'];
@@ -1026,7 +1035,7 @@ const LOCALES = { ru: 'ru-RU', en: 'en-GB' };
 
 const I18N = {
   ru: {
-    'meta.footer': 'PMRAuto · учебный проект · данные хранятся только в вашем браузере (localStorage)',
+    'meta.footer': 'PMRAuto · объявления о продаже транспорта в Приднестровье и Молдове',
     'meta.close': 'Закрыть',
     'meta.home': 'PMRAuto — на главную',
     'meta.language': 'Язык',
@@ -1106,7 +1115,7 @@ const I18N = {
     'profile.name': 'Имя и фамилия',
     'profile.namePh': 'Например, Иван Петров',
     'profile.contacts': 'Контакты',
-    'profile.contactsHint': 'Город и телефон будут сами подставляться в новые объявления. E-mail и Telegram покупатели увидят на странице объявления.',
+    'profile.contactsHint': 'Город и телефон будут сами подставляться в новые объявления. Телефон из профиля видите только вы. E-mail и Telegram покупатели увидят на странице объявления.',
     'profile.phone': 'Телефон',
     'profile.email': 'E-mail',
     'profile.save': 'Сохранить',
@@ -1114,13 +1123,15 @@ const I18N = {
     'profile.badEmail': 'Проверьте e-mail: в адресе должны быть @ и домен, например name@example.com.',
     'profile.badTelegram': 'Telegram: от 5 до 32 символов — латинские буквы, цифры и _.',
     'security.title': 'Смена пароля',
+
+    'security.loginEmail': 'E-mail для входа: {email}',
     'security.current': 'Текущий пароль',
     'security.new': 'Новый пароль',
     'security.save': 'Сменить пароль',
     'security.changed': 'Пароль изменён',
     'security.wrongCurrent': 'Текущий пароль указан неверно',
     'security.deleteTitle': 'Удаление аккаунта',
-    'security.deleteText': 'Аккаунт, профиль и все ваши объявления будут удалены. Восстановить их не получится.',
+    'security.deleteText': 'Аккаунт, профиль, все ваши объявления с фото и переписка будут удалены. Восстановить их не получится.',
     'security.deleteBtn': 'Удалить аккаунт',
     'security.deleted': 'Аккаунт удалён',
     'search.anyCity': 'Все города',
@@ -1172,25 +1183,25 @@ const I18N = {
     'results.resetAll': 'Сбросить фильтры',
     'page.back': '← На главную',
 
-    'footer.tagline': 'Простой каталог подержанных автомобилей. Учебный проект: все данные хранятся только в вашем браузере.',
+    'footer.tagline': 'Объявления о продаже автомобилей, мотоциклов, грузовиков и фургонов в Приднестровье и Молдове.',
     'footer.company': 'Компания',
     'footer.legal': 'Правовая информация',
     'footer.rights': '© {year} PMRAuto. Все права защищены.',
-    'footer.storage': 'Данные хранятся в localStorage вашего браузера',
+    'footer.storage': 'Объявления, профили и сообщения хранятся на сервере Supabase',
 
     'page.placeholder': 'Это текст-заглушка. Настоящее содержание страницы появится позже.',
     'page.about.title': 'О нас',
-    'page.about.body': 'PMRAuto — площадка для покупки и продажи автомобилей в Приднестровье и Молдове. Частные продавцы размещают здесь объявления, а покупатели находят подходящую машину и договариваются с продавцом напрямую.\n\nКроме легковых машин, на PMRAuto можно продать или найти мотоцикл, грузовик или фургон. В каталоге удобно искать по марке, модели, году, цене, пробегу, городу, топливу и коробке передач.\n\nРазместить объявление просто: зарегистрируйтесь, заполните форму и добавьте до 10 фото. Покупатели напишут вам во встроенный чат, а объявление можно в любой момент изменить или снять.\n\nСейчас сайт работает в тестовом режиме: объявления, аккаунты и сообщения сохраняются только в вашем браузере, и другие посетители их пока не видят.\n\nЕсть вопрос или идея? Нажмите «Задать вопрос» — мы ответим.',
+    'page.about.body': 'PMRAuto — площадка для покупки и продажи автомобилей в Приднестровье и Молдове. Частные продавцы размещают здесь объявления, а покупатели находят подходящую машину и договариваются с продавцом напрямую.\n\nКроме легковых машин, на PMRAuto можно продать или найти мотоцикл, грузовик или фургон. В каталоге удобно искать по марке, модели, году, цене, пробегу, городу, топливу и коробке передач.\n\nРазместить объявление просто: зарегистрируйтесь, заполните форму и добавьте до 10 фото. Покупатели напишут вам во встроенный чат, а объявление можно в любой момент снять.\n\nОбъявления с пометкой «Пример» созданы для демонстрации: модели, характеристики и фото настоящие, а продавцы и истории машин придуманы.\n\nЕсть вопрос или идея? Нажмите «Задать вопрос» — мы ответим.',
     'page.contacts.title': 'Контакты',
-    'page.contacts.body': 'PMRAuto — демо-проект, поэтому у нас нет офиса и телефона для звонков.\n\nЕсть вопрос, нашли ошибку или хотите предложить идею? Напишите нам через форму «Задать вопрос»: кнопка ниже или в правом нижнем углу любой страницы. Мы ответим на e-mail, который вы укажете.',
+    'page.contacts.body': 'У PMRAuto нет офиса и телефона для звонков.\n\nЕсть вопрос, нашли ошибку или хотите предложить идею? Напишите нам через форму «Задать вопрос»: кнопка ниже или в правом нижнем углу любой страницы. Мы ответим на e-mail, который вы укажете.',
     'page.privacy.title': 'Политика конфиденциальности',
-    'page.privacy.body': 'PMRAuto — демо-проект. Здесь простыми словами рассказано, какие данные использует сайт.\n\nВсё, что вы вводите на сайте, хранится только в вашем браузере (в хранилище localStorage):\n• аккаунт и профиль: логин, имя, город, телефон, e-mail или Telegram, аватар;\n• пароль — не открытым текстом, а в виде хеша;\n• ваши объявления и фото;\n• переписка с продавцами и покупателями;\n• выбранный язык.\n\nУ сайта нет сервера, поэтому эти данные никуда не отправляются. Мы их не видим, а другие посетители не могут их посмотреть.\n\nИсключение — форма «Задать вопрос»: имя, e-mail и текст сообщения отправляются нам через сервис Web3Forms. Мы используем их только для ответа.\n\nШрифт сайта загружается с Google Fonts. При этом ваш браузер обращается к серверам Google, и Google видит ваш IP-адрес.\n\nCookies, реклама и счётчики посещений не используются.\n\nЧтобы удалить свои данные, очистите данные этого сайта в настройках браузера. Восстановить их после этого нельзя.',
+    'page.privacy.body': 'Здесь простыми словами рассказано, какие данные использует сайт PMRAuto и где они хранятся.\n\nАккаунт, профиль, объявления, фото и переписка хранятся на сервере сервиса Supabase:\n• для входа: e-mail и пароль. Пароль хранится только в виде хеша, мы его не видим;\n• профиль: логин, имя, город, контактный e-mail или Telegram, аватар;\n• телефон из профиля. Его видите только вы, он подставляется в новые объявления;\n• ваши объявления и фото;\n• переписка с продавцами и покупателями.\n\nЧто видят другие посетители: ваши объявления (с телефоном, если вы указали его в объявлении), а также логин, имя, город, аватар, контактный e-mail и Telegram из профиля. Переписку видят только её участники. E-mail для входа и пароль никому не показываются.\n\nВ вашем браузере хранятся только данные входа (чтобы не вводить пароль каждый раз), выбранный язык, избранное и список сравнения.\n\nФорма «Задать вопрос»: имя, e-mail и текст сообщения отправляются нам через сервис Web3Forms. Мы используем их только для ответа.\n\nШрифт сайта загружается с Google Fonts. При этом ваш браузер обращается к серверам Google, и Google видит ваш IP-адрес.\n\nCookies, реклама и счётчики посещений не используются.\n\nЧтобы удалить свои данные, откройте «Личный кабинет» → «Безопасность» → «Удалить аккаунт». Аккаунт, профиль, объявления с фото и переписка будут удалены с сервера.',
     'page.terms.title': 'Условия использования',
-    'page.terms.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме: настоящих сделок здесь нет, а примеры объявлений созданы для демонстрации.\n\nВаш аккаунт, объявления и сообщения хранятся только в вашем браузере. Другие посетители их не видят. Если очистить данные браузера, всё пропадёт, и восстановить это мы не сможем.\n\nПожалуйста:\n• размещайте только свои машины и правдивые данные;\n• не публикуйте чужие фото без разрешения;\n• не размещайте оскорбления, спам и незаконный контент.\n\nСайт предоставляется как есть, без гарантий. Мы не отвечаем за потерю данных в браузере.\n\nВопросы по правилам задавайте через форму «Задать вопрос».',
+    'page.terms.body': 'Правила пользования сайтом PMRAuto.\n\nPMRAuto только показывает объявления и помогает покупателю связаться с продавцом. Сделки вы заключаете напрямую друг с другом: мы в них не участвуем и не проверяем машины и продавцов. Объявления с пометкой «Пример» созданы для демонстрации.\n\nПожалуйста:\n• размещайте только свои машины и правдивые данные;\n• не публикуйте чужие фото без разрешения;\n• не размещайте оскорбления, спам и незаконный контент.\n\nМы можем удалить объявления и аккаунты, которые нарушают эти правила.\n\nСайт предоставляется как есть, без гарантий. Перед покупкой проверяйте машину и документы сами.\n\nВопросы по правилам задавайте через форму «Задать вопрос».',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме и не ведёт коммерческой деятельности.\n\nImpressum — страница с данными владельца сайта. Она будет заполнена, когда PMRAuto начнёт работать как настоящая площадка.\n\nСвязаться с нами можно через форму «Задать вопрос».',
     'page.cookies.title': 'Настройки cookies',
-    'page.cookies.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме, а примеры объявлений созданы для демонстрации.\n\nСайт не использует cookies, рекламу и счётчики посещений.\n\nВсё, что вы делаете на сайте, хранится только в вашем браузере (в хранилище localStorage): аккаунт и вход, ваши объявления и фото, переписка, выбранный язык. На сервер эти данные не отправляются, и другие посетители их не видят.\n\nИсключение — форма «Задать вопрос»: имя, e-mail и текст сообщения отправляются нам через сервис Web3Forms, чтобы мы могли ответить.\n\nЧтобы удалить свои данные, очистите данные этого сайта в настройках браузера. Аккаунт, объявления и сообщения после этого восстановить нельзя.',
+    'page.cookies.body': 'Сайт не использует cookies, рекламу и счётчики посещений.\n\nВ хранилище вашего браузера (localStorage) сохраняется только то, что нужно для работы сайта:\n• данные входа в аккаунт — чтобы не вводить пароль при каждом посещении;\n• выбранный язык;\n• избранное и список сравнения;\n• время отправки последнего вопроса через форму — для защиты от спама.\n\nАккаунт, объявления, фото и переписка хранятся на сервере Supabase. Подробнее — в политике конфиденциальности.\n\nЧтобы убрать эти данные из браузера, выйдите из аккаунта или очистите данные этого сайта в настройках браузера. Аккаунт и объявления на сервере при этом останутся.',
 
     'nav.catalog': 'Каталог',
     'nav.my': 'Мои объявления',
@@ -1318,10 +1329,7 @@ const I18N = {
     'delete.done': 'Объявление удалено',
 
     'my.title': 'Мои объявления',
-    'my.none': 'У вас пока нет объявлений',
-    'my.storage': 'Хранилище: {used} МБ из ~5 МБ',
-    'my.storageHint': 'Браузер обычно даёт около 5 МБ на сайт',
-    'my.emptyTitle': 'Здесь появятся ваши объявления',
+    'my.none': 'У вас пока нет объявлений',    'my.emptyTitle': 'Здесь появятся ваши объявления',
     'my.emptyText': 'Разместите первое — это займёт пару минут.',
     'my.sell': 'Выставить машину',
 
@@ -1351,13 +1359,13 @@ const I18N = {
     'sell.photos': 'Фотографии',
     'sell.dropTitle': 'Нажмите, чтобы выбрать фото, или перетащите их сюда',
     'sell.dropHint': 'JPG, PNG, WebP · до {max} фото · первое фото станет обложкой',
-    'sell.photoHint': 'Фото автоматически уменьшаются до 1280 px, чтобы поместиться в хранилище браузера. Нажмите на фото, чтобы сделать его обложкой.',
+    'sell.photoHint': 'Фото автоматически уменьшаются до 1280 px. Нажмите на фото, чтобы сделать его обложкой.',
     'sell.cancel': 'Отмена',
     'sell.submit': 'Опубликовать объявление',
     'sell.processing': 'Подождите, фотографии ещё обрабатываются…',
-    'sell.check': 'Проверьте поля: {fields}.',
-    'sell.quota': 'Не хватает места в хранилище браузера. Уберите часть фото или удалите старые объявления.',
-    'sell.saveFailed': 'Не удалось сохранить объявление.',
+    'sell.check': 'Проверьте поля: {fields}.',    'sell.saveFailed': 'Не удалось сохранить объявление.',
+    'sell.uploading': 'Загружаем фото: {n} из {total}…',
+    'sell.publishing': 'Публикуем…',
     'sell.published': 'Объявление опубликовано',
     'field.brand': 'марку',
     'field.model': 'модель',
@@ -1382,6 +1390,30 @@ const I18N = {
     'auth.username': 'Логин',
     'auth.password': 'Пароль',
     'auth.password2': 'Повторите пароль',
+
+    'auth.email': 'E-mail',
+
+    'auth.usernameHint': 'Его увидят другие пользователи. 3–20 символов: латинские буквы, цифры, _ . -',
+
+    'auth.forgot': 'Забыли пароль?',
+
+    'auth.forgotTitle': 'Восстановление пароля',
+
+    'auth.forgotText': 'Укажите e-mail, с которым вы регистрировались. Мы пришлём ссылку для смены пароля.',
+
+    'auth.forgotSend': 'Отправить ссылку',
+
+    'auth.forgotSent': 'Если этот e-mail зарегистрирован, мы отправили на него письмо. Откройте ссылку из письма на этом устройстве.',
+
+    'auth.backToLogin': '← Ко входу',
+
+    'auth.newPasswordTitle': 'Новый пароль',
+
+    'auth.newPasswordText': 'Придумайте новый пароль для входа.',
+
+    'auth.checkEmail': 'Почти готово! Мы отправили письмо на {email}. Откройте ссылку из него, а потом войдите.',
+
+    'auth.linkExpired': 'Ссылка из письма устарела или уже использована. Запросите новую',
     'auth.submitLogin': 'Войти',
     'auth.submitRegister': 'Зарегистрироваться',
     'auth.required': 'Войдите, чтобы продолжить',
@@ -1393,11 +1425,31 @@ const I18N = {
     'err.passwordMismatch': 'Пароли не совпадают',
     'err.taken': 'Этот логин уже занят',
     'err.storage': 'Браузер не даёт сохранить данные (например, в приватном режиме)',
-    'err.badLogin': 'Неверный логин или пароль',
+    'err.badLogin': 'Неверный e-mail или пароль',
+
+    'err.email': 'Введите правильный e-mail',
+
+    'err.emailTaken': 'Этот e-mail уже зарегистрирован. Войдите или восстановите пароль',
+
+    'err.notConfirmed': 'E-mail ещё не подтверждён: откройте ссылку из письма',
+
+    'err.rateLimit': 'Слишком много попыток. Подождите немного и попробуйте снова',
+
+    'err.passwordWeak': 'Пароль слишком простой, придумайте другой',
+
+    'err.samePassword': 'Новый пароль совпадает со старым',
+
+    'err.network': 'Нет связи с сервером. Проверьте интернет и попробуйте снова',
+
+    'err.server': 'Ошибка сервера. Попробуйте ещё раз позже',
+
+    'err.load': 'Не удалось загрузить объявления с сервера. Показаны только примеры',
+
+    'app.loading': 'Загрузка…',
   },
 
   en: {
-    'meta.footer': 'PMRAuto · demo project · your data is stored only in your browser (localStorage)',
+    'meta.footer': 'PMRAuto · vehicle listings in Transnistria and Moldova',
     'meta.close': 'Close',
     'meta.home': 'PMRAuto home',
     'meta.language': 'Language',
@@ -1477,7 +1529,7 @@ const I18N = {
     'profile.name': 'Full name',
     'profile.namePh': 'e.g. John Smith',
     'profile.contacts': 'Contact details',
-    'profile.contactsHint': 'Your city and phone will be filled in automatically on new listings. Buyers will see your email and Telegram on the listing page.',
+    'profile.contactsHint': 'Your city and phone will be filled in automatically on new listings. Only you can see the phone in your profile. Buyers will see your email and Telegram on the listing page.',
     'profile.phone': 'Phone',
     'profile.email': 'Email',
     'profile.save': 'Save changes',
@@ -1485,13 +1537,15 @@ const I18N = {
     'profile.badEmail': 'Check the email: it needs an @ and a domain, e.g. name@example.com.',
     'profile.badTelegram': 'Telegram: 5 to 32 characters, Latin letters, digits and _.',
     'security.title': 'Change password',
+
+    'security.loginEmail': 'Sign-in email: {email}',
     'security.current': 'Current password',
     'security.new': 'New password',
     'security.save': 'Change password',
     'security.changed': 'Password changed',
     'security.wrongCurrent': 'The current password is wrong',
     'security.deleteTitle': 'Delete account',
-    'security.deleteText': 'Your account, profile and all your listings will be deleted. This can’t be undone.',
+    'security.deleteText': 'Your account, profile, all your listings with photos and your messages will be deleted. This can’t be undone.',
     'security.deleteBtn': 'Delete account',
     'security.deleted': 'Account deleted',
     'search.anyCity': 'All cities',
@@ -1543,25 +1597,25 @@ const I18N = {
     'results.resetAll': 'Reset filters',
     'page.back': '← Back to home',
 
-    'footer.tagline': 'A simple used-car marketplace. Demo project: all data stays in your browser.',
+    'footer.tagline': 'Listings for cars, motorcycles, trucks and vans for sale in Transnistria and Moldova.',
     'footer.company': 'Company',
     'footer.legal': 'Legal',
     'footer.rights': '© {year} PMRAuto. All rights reserved.',
-    'footer.storage': 'Data is stored in your browser’s localStorage',
+    'footer.storage': 'Listings, profiles and messages are stored on a Supabase server',
 
     'page.placeholder': 'This is placeholder text. The real content will be added later.',
     'page.about.title': 'About us',
-    'page.about.body': 'PMRAuto is a marketplace for buying and selling cars in Transnistria and Moldova. Private sellers post listings here, and buyers find the right car and deal with the seller directly.\n\nBesides cars, you can sell or find a motorcycle, truck or van on PMRAuto. The catalogue lets you search by make, model, year, price, mileage, city, fuel type and gearbox.\n\nPosting a listing is easy: sign up, fill in the form and add up to 10 photos. Buyers can message you in the built-in chat, and you can edit or remove your listing at any time.\n\nThe site is currently in test mode: listings, accounts and messages are saved only in your browser, so other visitors can’t see them yet.\n\nHave a question or an idea? Click “Ask a question” and we’ll get back to you.',
+    'page.about.body': 'PMRAuto is a marketplace for buying and selling cars in Transnistria and Moldova. Private sellers post listings here, and buyers find the right car and deal with the seller directly.\n\nBesides cars, you can sell or find a motorcycle, truck or van on PMRAuto. The catalogue lets you search by make, model, year, price, mileage, city, fuel type and gearbox.\n\nPosting a listing is easy: sign up, fill in the form and add up to 10 photos. Buyers can message you in the built-in chat, and you can remove your listing at any time.\n\nListings marked “Example” were made for demonstration: the models, specs and photos are real, but the sellers and the cars’ histories are made up.\n\nHave a question or an idea? Click “Ask a question” and we’ll get back to you.',
     'page.contacts.title': 'Contact',
-    'page.contacts.body': 'PMRAuto is a demo project, so we have no office or phone line.\n\nHave a question, found a bug or want to suggest an idea? Write to us using the “Ask a question” form: the button below or in the bottom-right corner of any page. We’ll reply to the email you enter.',
+    'page.contacts.body': 'PMRAuto has no office or phone line.\n\nHave a question, found a bug or want to suggest an idea? Write to us using the “Ask a question” form: the button below or in the bottom-right corner of any page. We’ll reply to the email you enter.',
     'page.privacy.title': 'Privacy policy',
-    'page.privacy.body': 'PMRAuto is a demo project. This page explains in plain words what data the site uses.\n\nEverything you enter on the site is stored only in your browser (in localStorage):\n• your account and profile: username, name, city, phone, email or Telegram, avatar;\n• your password — not as plain text, but as a hash;\n• your listings and photos;\n• your messages with sellers and buyers;\n• your chosen language.\n\nThe site has no server, so this data isn’t sent anywhere. We can’t see it, and other visitors can’t view it.\n\nThe one exception is the “Ask a question” form: your name, email and message are sent to us through the Web3Forms service. We use them only to reply.\n\nThe site’s font is loaded from Google Fonts. To do this your browser connects to Google’s servers, so Google sees your IP address.\n\nThe site uses no cookies, ads or visitor tracking.\n\nTo delete your data, clear this site’s data in your browser settings. It can’t be recovered afterwards.',
+    'page.privacy.body': 'This page explains in plain words what data PMRAuto uses and where it is stored.\n\nYour account, profile, listings, photos and messages are stored on a server run by the Supabase service:\n• for signing in: your email and password. The password is stored only as a hash, so we can’t see it;\n• your profile: username, name, city, contact email or Telegram, avatar;\n• the phone number in your profile. Only you can see it; it’s filled in on your new listings;\n• your listings and photos;\n• your messages with sellers and buyers.\n\nWhat other visitors can see: your listings (with the phone number, if you added it to the listing), plus the username, name, city, avatar, contact email and Telegram from your profile. Messages are visible only to the people in the conversation. Your sign-in email and password are never shown to anyone.\n\nYour browser stores only your sign-in session (so you don’t have to enter your password every time), your chosen language, your favourites and your comparison list.\n\nThe “Ask a question” form: your name, email and message are sent to us through the Web3Forms service. We use them only to reply.\n\nThe site’s font is loaded from Google Fonts. To do this your browser connects to Google’s servers, so Google sees your IP address.\n\nThe site uses no cookies, ads or visitor tracking.\n\nTo delete your data, open “My account” → “Security” → “Delete account”. Your account, profile, listings with photos and messages will be deleted from the server.',
     'page.terms.title': 'Terms of use',
-    'page.terms.body': 'PMRAuto is a demo project. The site is running in test mode: no real deals happen here, and the example listings were made for demonstration.\n\nYour account, listings and messages are stored only in your browser. Other visitors can’t see them. If you clear your browser data, everything is lost and we can’t restore it.\n\nPlease:\n• list only your own vehicles and give accurate details;\n• don’t post other people’s photos without permission;\n• don’t post insults, spam or illegal content.\n\nThe site is provided as is, without any guarantees. We are not responsible for data lost from your browser.\n\nIf you have questions about these rules, use the “Ask a question” form.',
+    'page.terms.body': 'The rules for using PMRAuto.\n\nPMRAuto only shows listings and helps buyers contact sellers. You make deals directly with each other: we take no part in them and don’t check the vehicles or the sellers. Listings marked “Example” were made for demonstration.\n\nPlease:\n• list only your own vehicles and give accurate details;\n• don’t post other people’s photos without permission;\n• don’t post insults, spam or illegal content.\n\nWe may remove listings and accounts that break these rules.\n\nThe site is provided as is, without any guarantees. Check the vehicle and its documents yourself before you buy.\n\nIf you have questions about these rules, use the “Ask a question” form.',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto is a demo project. The site is running in test mode and is not a commercial service.\n\nThe Impressum is the legal notice naming who runs the site. It will be completed once PMRAuto launches as a real marketplace.\n\nYou can contact us using the “Ask a question” form.',
     'page.cookies.title': 'Cookie settings',
-    'page.cookies.body': 'PMRAuto is a demo project. The site is running in test mode, and the example listings were made for demonstration.\n\nThe site uses no cookies, ads or visitor tracking.\n\nEverything you do on the site is stored only in your browser (in localStorage): your account and sign-in, your listings and photos, your messages and your chosen language. This data is not sent to a server, and other visitors can’t see it.\n\nThe one exception is the “Ask a question” form: your name, email and message are sent to us through the Web3Forms service so we can reply.\n\nTo delete your data, clear this site’s data in your browser settings. Your account, listings and messages can’t be recovered afterwards.',
+    'page.cookies.body': 'The site uses no cookies, ads or visitor tracking.\n\nYour browser’s storage (localStorage) keeps only what the site needs to work:\n• your sign-in session, so you don’t have to enter your password on every visit;\n• your chosen language;\n• your favourites and comparison list;\n• when you last sent a question through the form, to protect against spam.\n\nYour account, listings, photos and messages are stored on a Supabase server. See the privacy policy for details.\n\nTo remove this data from your browser, log out or clear this site’s data in your browser settings. Your account and listings on the server will stay.',
 
     'nav.catalog': 'Browse',
     'nav.my': 'My listings',
@@ -1689,10 +1743,7 @@ const I18N = {
     'delete.done': 'Listing deleted',
 
     'my.title': 'My listings',
-    'my.none': 'You have no listings yet',
-    'my.storage': 'Storage: {used} MB of ~5 MB',
-    'my.storageHint': 'Browsers usually allow about 5 MB per site',
-    'my.emptyTitle': 'Your listings will appear here',
+    'my.none': 'You have no listings yet',    'my.emptyTitle': 'Your listings will appear here',
     'my.emptyText': 'Post your first one, it only takes a couple of minutes.',
     'my.sell': 'Sell your car',
 
@@ -1722,13 +1773,13 @@ const I18N = {
     'sell.photos': 'Photos',
     'sell.dropTitle': 'Click to choose photos or drag them here',
     'sell.dropHint': 'JPG, PNG, WebP · up to {max} photos · the first photo becomes the cover',
-    'sell.photoHint': 'Photos are resized to 1280 px so they fit in the browser’s storage. Click a photo to make it the cover.',
+    'sell.photoHint': 'Photos are resized to 1280 px. Click a photo to make it the cover.',
     'sell.cancel': 'Cancel',
     'sell.submit': 'Publish listing',
     'sell.processing': 'Please wait, photos are still being processed…',
-    'sell.check': 'Please check: {fields}.',
-    'sell.quota': 'Not enough browser storage. Remove some photos or delete old listings.',
-    'sell.saveFailed': 'Couldn’t save the listing.',
+    'sell.check': 'Please check: {fields}.',    'sell.saveFailed': 'Couldn’t save the listing.',
+    'sell.uploading': 'Uploading photos: {n} of {total}…',
+    'sell.publishing': 'Publishing…',
     'sell.published': 'Listing published',
     'field.brand': 'make',
     'field.model': 'model',
@@ -1753,6 +1804,30 @@ const I18N = {
     'auth.username': 'Username',
     'auth.password': 'Password',
     'auth.password2': 'Repeat password',
+
+    'auth.email': 'Email',
+
+    'auth.usernameHint': 'Other users will see it. 3–20 characters: Latin letters, digits, _ . -',
+
+    'auth.forgot': 'Forgot your password?',
+
+    'auth.forgotTitle': 'Reset password',
+
+    'auth.forgotText': 'Enter the email you signed up with. We’ll send you a link to set a new password.',
+
+    'auth.forgotSend': 'Send link',
+
+    'auth.forgotSent': 'If this email is registered, we’ve sent a message to it. Open the link from the email on this device.',
+
+    'auth.backToLogin': '← Back to log in',
+
+    'auth.newPasswordTitle': 'New password',
+
+    'auth.newPasswordText': 'Choose a new password for signing in.',
+
+    'auth.checkEmail': 'Almost done! We’ve sent an email to {email}. Open the link in it, then log in.',
+
+    'auth.linkExpired': 'The link from the email has expired or was already used. Request a new one',
     'auth.submitLogin': 'Log in',
     'auth.submitRegister': 'Sign up',
     'auth.required': 'Log in to continue',
@@ -1764,7 +1839,27 @@ const I18N = {
     'err.passwordMismatch': 'Passwords don’t match',
     'err.taken': 'This username is already taken',
     'err.storage': 'The browser won’t let us save data (for example, in private mode)',
-    'err.badLogin': 'Wrong username or password',
+    'err.badLogin': 'Wrong email or password',
+
+    'err.email': 'Enter a valid email',
+
+    'err.emailTaken': 'This email is already registered. Log in or reset your password',
+
+    'err.notConfirmed': 'Your email isn’t confirmed yet: open the link in the email we sent',
+
+    'err.rateLimit': 'Too many attempts. Wait a little and try again',
+
+    'err.passwordWeak': 'This password is too weak, please choose another',
+
+    'err.samePassword': 'The new password is the same as the old one',
+
+    'err.network': 'Can’t reach the server. Check your connection and try again',
+
+    'err.server': 'Server error. Please try again later',
+
+    'err.load': 'Couldn’t load listings from the server. Showing examples only',
+
+    'app.loading': 'Loading…',
   },
 
 };
@@ -1811,7 +1906,6 @@ const num = (n) => new Intl.NumberFormat(LOCALES[lang]).format(n);
 const fmtPrice = (n) => `${num(n)} €`;
 const fmtKm = (n) => `${num(n)} ${t('unit.km')}`;
 const fmtDate = (ts) => new Date(ts).toLocaleDateString(LOCALES[lang], { day: 'numeric', month: 'long', year: 'numeric' });
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 const store = {
   get(key, fallback) {
@@ -1837,26 +1931,183 @@ function toast(message, type = '') {
   toastTimer = setTimeout(() => { el.className = 'toast'; }, 3200);
 }
 
-function storageUsage() {
-  let chars = 0;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      chars += k.length + (localStorage.getItem(k) || '').length;
-    }
-  } catch { /* хранилище недоступно */ }
-  return chars * 2; // UTF-16: ~2 байта на символ
+/* ---------- Данные: Supabase ----------
+   Объявления и профили загружаются с сервера один раз и лежат в памяти (db),
+   поэтому страницы рисуются сразу. Изменения уходят на сервер и тут же
+   попадают в db. Раз в 30 секунд при переходах данные обновляются.
+   Внутри сайта пользователи называются логинами: owner, buyer, seller — это логины,
+   а id из базы нужны только для запросов. */
+
+// Ссылка из письма «восстановить пароль» открывает сайт с #...type=recovery — запоминаем до разбора адреса
+const RECOVERY_LINK = /type=recovery/.test(location.hash);
+const AUTH_LINK_ERROR = /error_code=/.test(location.hash);
+
+const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
+
+const db = {
+  listings: [],        // объявления из базы
+  users: new Map(),    // логин → { id, username, createdAt, profile }
+  byId: new Map(),     // id пользователя → логин
+  me: null,            // кто вошёл: { id, username, email, phone }
+  loadedAt: 0,
+  failed: false,
+};
+
+const PROFILE_COLS = 'id, username, name, city, email, telegram, avatar, created_at';
+const ts = (iso) => (iso ? Date.parse(iso) : 0);
+const nameOf = (id) => db.byId.get(id) || '';
+
+// Ответ Supabase → данные или исключение
+function must({ data, error }) {
+  if (error) throw error;
+  return data;
 }
 
-/* ---------- Данные ---------- */
+function rememberProfile(row) {
+  const user = {
+    id: row.id,
+    username: row.username,
+    createdAt: ts(row.created_at),
+    profile: { name: row.name, city: row.city, email: row.email, telegram: row.telegram, avatar: row.avatar },
+  };
+  db.users.set(row.username, user);
+  db.byId.set(row.id, row.username);
+  return user;
+}
 
-const getListings = () => store.get(KEYS.listings, []);
-const saveListings = (list) => store.set(KEYS.listings, list);
-const getUsers = () => store.get(KEYS.users, []);
-const currentUser = () => store.get(KEYS.session, null)?.username || null;
+// Профили, которых ещё нет в памяти (например, собеседник зарегистрировался недавно)
+async function ensureProfiles(ids) {
+  const missing = [...new Set(ids)].filter((id) => id && !db.byId.has(id));
+  if (!missing.length || !sb) return;
+  const { data } = await sb.from('profiles').select(PROFILE_COLS).in('id', missing);
+  (data || []).forEach(rememberProfile);
+}
 
-function isQuotaError(err) {
-  return err && (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22);
+function listingFromRow(r) {
+  return {
+    id: r.id,
+    owner: nameOf(r.owner),
+    ownerId: r.owner,
+    createdAt: ts(r.created_at),
+    vehicle: r.vehicle,
+    brand: r.brand,
+    model: r.model,
+    year: r.year,
+    mileage: r.mileage,
+    price: r.price,
+    fuel: r.fuel,
+    transmission: r.transmission,
+    power: r.power ?? '',
+    body: r.body,
+    color: r.color,
+    city: r.city,
+    phone: r.phone,
+    description: r.description,
+    photos: r.photos || [],
+  };
+}
+
+async function loadData() {
+  if (!sb) {
+    db.failed = true;
+    return;
+  }
+  try {
+    const [profiles, listings] = await Promise.all([
+      sb.from('profiles').select(PROFILE_COLS),
+      sb.from('listings').select('*').order('created_at', { ascending: false }).limit(1000),
+    ]);
+    const profileRows = must(profiles);
+    const listingRows = must(listings);
+    db.users.clear();
+    db.byId.clear();
+    profileRows.forEach(rememberProfile);
+    db.listings = listingRows.map(listingFromRow);
+    db.failed = false;
+  } catch (err) {
+    console.warn('Supabase: не удалось загрузить данные', err);
+    db.failed = true;
+  }
+  db.loadedAt = Date.now();
+}
+
+// Кто вошёл. Телефон из профиля личный — он хранится в данных пользователя, а не в общей таблице
+async function loadSession(session) {
+  const u = session?.user;
+  if (!u) {
+    db.me = null;
+    return;
+  }
+  await ensureProfiles([u.id]);
+  const username = nameOf(u.id);
+  db.me = username ? { id: u.id, username, email: u.email, phone: u.user_metadata?.phone || '' } : null;
+}
+
+let refreshing = null;
+const dataSignature = () => JSON.stringify(db.listings) + JSON.stringify([...db.users.values()]);
+// Обновляет данные, если они старше 30 секунд. Возвращает true, если что-то изменилось
+async function refreshData(force = false) {
+  if (!force && Date.now() - db.loadedAt < 30000) return false;
+  if (!refreshing) {
+    const before = dataSignature();
+    refreshing = loadData().then(() => dataSignature() !== before).finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+// Примеры объявлений живут в коде, а не в базе: их видят все, но написать по ним нельзя
+let EXAMPLES = [];
+const getListings = () => [...db.listings, ...EXAMPLES];
+const currentUser = () => db.me?.username || null;
+const getUser = (username) => db.users.get(username) || null;
+
+function newId() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/* ---------- Фото в Supabase Storage ----------
+   Файлы лежат в папке photos/<id пользователя>/..., загружать можно только в свою папку. */
+
+function dataUrlToBlob(dataUrl) {
+  const [head, body] = dataUrl.split(',');
+  const type = head.match(/data:([^;]+)/)?.[1] || 'image/jpeg';
+  const bytes = atob(body);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+
+async function uploadPhoto(path, dataUrl) {
+  must(await sb.storage.from(PHOTO_BUCKET).upload(path, dataUrlToBlob(dataUrl), {
+    contentType: 'image/jpeg',
+    // Час в кэше: дольше нельзя, иначе удалённое фото ещё долго будет открываться по старой ссылке
+    cacheControl: '3600',
+  }));
+  return sb.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+// Путь в хранилище по публичной ссылке; для чужих ссылок (img/..., data:) — null
+function photoPath(url) {
+  const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+  const i = String(url || '').indexOf(marker);
+  return i < 0 ? null : decodeURIComponent(url.slice(i + marker.length));
+}
+
+// Удаление файлов — «по возможности»: если не вышло, остаётся лишний файл, но сайт работает
+async function removePhotos(urls) {
+  const paths = urls.map(photoPath).filter(Boolean);
+  if (!paths.length || !sb) return;
+  try {
+    const removed = must(await sb.storage.from(PHOTO_BUCKET).remove(paths));
+    if (removed.length < paths.length) console.warn('Supabase: удалены не все фото', paths, removed);
+  } catch (err) {
+    console.warn('Supabase: не удалось удалить фото', err);
+  }
 }
 
 /* Заглушка для объявлений без фото */
@@ -2051,10 +2302,9 @@ Accident-free. Includes a set of winter wheels on alloy rims.`,
   },
 ];
 
-function seedIfNeeded() {
-  if (store.get(KEYS.seeded, false)) return;
+function buildExamples() {
   const now = Date.now();
-  const examples = SEED.map((car, i) => ({
+  EXAMPLES = SEED.map((car, i) => ({
     id: `example-${i + 1}`,
     owner: EXAMPLE_OWNER,
     example: true,
@@ -2062,68 +2312,94 @@ function seedIfNeeded() {
     createdAt: now - (i + 1) * 86400000,
     ...car,
   }));
-  try {
-    // Заменяем старые примеры (и самые первые демо с нарисованными машинами) новыми
-    const own = getListings().filter((l) => l.owner !== 'demo' && !l.example);
-    saveListings([...own, ...examples]);
-    store.set(KEYS.seeded, true);
-  } catch { /* без хранилища каталог просто будет пустым */ }
 }
 
-/* ---------- Аутентификация ---------- */
-/* Это учебная регистрация: всё лежит в браузере, поэтому пароль хотя бы
-   не хранится открытым текстом — сохраняется SHA-256 от соли и пароля.
+/* ---------- Аутентификация (Supabase Auth) ----------
+   Вход по e-mail и паролю; пароли хранит и проверяет сервер.
+   Логин (username) — имя пользователя на сайте, задаётся при регистрации.
    Функции возвращают ключ перевода ошибки или null. */
 
-async function hashPassword(password, salt) {
-  const data = new TextEncoder().encode(`${salt}:${password}`);
-  if (window.crypto?.subtle) {
-    const buf = await crypto.subtle.digest('SHA-256', data);
-    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  }
-  // Запасной вариант для окружений без SubtleCrypto (FNV-1a)
-  let h = 0x811c9dc5;
-  for (const byte of data) { h ^= byte; h = Math.imul(h, 0x01000193) >>> 0; }
-  return `fnv-${h.toString(16)}`;
+const siteUrl = () => location.origin + location.pathname;
+
+// Ошибка Supabase → ключ перевода
+function authError(err) {
+  const code = err?.code || '';
+  const msg = String(err?.message || '');
+  if (err?.name === 'AuthRetryableFetchError' || err?.status === 0 || /fetch|network/i.test(msg)) return 'err.network';
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'err.badLogin';
+  if (code === 'email_not_confirmed' || /not confirmed/i.test(msg)) return 'err.notConfirmed';
+  if (code === 'user_already_exists' || code === 'email_exists' || /already (been )?registered/i.test(msg)) return 'err.emailTaken';
+  if (code === 'weak_password') return 'err.passwordWeak';
+  if (code === 'same_password') return 'err.samePassword';
+  if (code === 'email_address_invalid' || code === 'validation_failed') return 'err.email';
+  if (code.startsWith('over_') || err?.status === 429) return 'err.rateLimit';
+  if (/database error saving new user/i.test(msg)) return 'err.taken'; // логин успели занять одновременно
+  console.warn('Supabase auth:', err);
+  return 'err.server';
 }
 
-async function register(username, password, password2) {
+async function register(username, email, password, password2) {
   username = username.trim();
+  email = email.trim();
   if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(username)) return 'err.username';
+  if (!EMAIL_RE.test(email)) return 'err.email';
   if (password.length < 6) return 'err.passwordShort';
   if (password !== password2) return 'err.passwordMismatch';
-  const users = getUsers();
-  const lower = username.toLowerCase();
-  const taken = ['demo', 'automarkt', EXAMPLE_OWNER.toLowerCase()].includes(lower) || users.some((u) => u.username.toLowerCase() === lower);
-  if (taken) return 'err.taken';
-  const salt = uid();
-  users.push({ username, salt, hash: await hashPassword(password, salt), createdAt: Date.now() });
+  if (!sb) return 'err.network';
   try {
-    store.set(KEYS.users, users);
-    store.set(KEYS.session, { username });
-  } catch {
-    return 'err.storage';
+    if (must(await sb.rpc('username_taken', { name: username }))) return 'err.taken';
+  } catch (err) {
+    return authError(err);
   }
-  return null;
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { username }, emailRedirectTo: siteUrl() },
+  });
+  if (error) return authError(error);
+  // При включённом подтверждении почты Supabase не сообщает, что адрес занят, а отдаёт пустой список identities
+  if (data.user && !data.user.identities?.length) return 'err.emailTaken';
+  if (!data.session) return 'auth.checkEmail'; // нужно подтвердить почту — это не ошибка, форма покажет подсказку
+  await loadSession(data.session);
+  return currentUser() ? null : 'err.server';
 }
 
-async function login(username, password) {
-  const user = getUsers().find((u) => u.username.toLowerCase() === username.trim().toLowerCase());
-  if (!user || user.hash !== await hashPassword(password, user.salt)) return 'err.badLogin';
-  try {
-    store.set(KEYS.session, { username: user.username });
-  } catch {
-    return 'err.storage';
-  }
-  return null;
+async function login(email, password) {
+  if (!EMAIL_RE.test(email.trim())) return 'err.email';
+  if (!sb) return 'err.network';
+  const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) return authError(error);
+  await loadSession(data.session);
+  return currentUser() ? null : 'err.server';
 }
 
-function logout() {
-  try { localStorage.removeItem(KEYS.session); } catch { /* ignore */ }
+async function logout() {
+  try {
+    await sb?.auth.signOut();
+  } catch { /* сессия всё равно будет удалена из браузера */ }
+  db.me = null;
+  subscribeMessages();
   toast(t('auth.loggedOut'));
   if (['sell', 'my', 'account'].includes(currentRoute.name)) go('home');
   else router();
 }
+
+// Вход/выход в другой вкладке (Supabase сообщает об этом сам) и обновление сессии
+function onAuthChange(event, session) {
+  // Вызывать Supabase прямо внутри этого обработчика нельзя — откладываем
+  setTimeout(async () => {
+    if (event === 'PASSWORD_RECOVERY') return openNewPassword();
+    const before = currentUser();
+    if (event === 'SIGNED_OUT') db.me = null;
+    else if (session?.user?.id !== db.me?.id) await loadSession(session);
+    if (currentUser() === before || !booted) return;
+    subscribeMessages();
+    if (!currentUser() && ['sell', 'my', 'account'].includes(currentRoute.name)) go('home');
+    else if (currentRoute.name !== 'sell') router({ keepScroll: true });
+    else renderNav('sell');
+  }, 0);
+}
+if (sb) sb.auth.onAuthStateChange(onAuthChange);
 
 /* ---------- Язык ---------- */
 
@@ -3221,110 +3497,125 @@ async function deleteListing(id) {
   const ok = await confirmDialog(t('delete.title'), t('delete.text', { name: `${car.brand} ${car.model}` }), t('delete.confirm'));
   if (!ok) return false;
   try {
-    saveListings(getListings().filter((l) => l.id !== id));
+    must(await sb.from('listings').delete().eq('id', id));
   } catch {
     toast(t('delete.failed'), 'error');
     return false;
   }
+  db.listings = db.listings.filter((l) => l.id !== id);
+  removePhotos(car.photos);
   toast(t('delete.done'));
   return true;
 }
 
-/* ---------- Сообщения: слой данных ----------
-   Остальной код работает с чатами только через chatApi. Методы асинхронные, как у настоящего
-   API, поэтому для перехода на бэкенд достаточно заменить их тела запросами к серверу:
-     listChats(user)            → GET  /api/chats                  (диалоги текущего пользователя)
-     getChat(chatId)            → GET  /api/chats/:id
-     openChat(listing, buyer)   → POST /api/chats { listingId }     (вернуть существующий или создать)
-     getMessages(chatId)        → GET  /api/chats/:id/messages
-     sendMessage(chatId, from, text) → POST /api/chats/:id/messages { text }
-     markRead(chatId, user)     → POST /api/chats/:id/read
-     unreadTotal(user)          → GET  /api/chats/unread-count
-     deleteUserData(user)       → делается на сервере при удалении аккаунта
-   На сервере пользователя нужно брать из сессии, а не из параметров запроса. */
+/* ---------- Сообщения: слой данных (Supabase) ----------
+   Остальной код работает с чатами только через chatApi. Кто пишет, сервер берёт из сессии,
+   а правила доступа в базе не дают читать и писать в чужие диалоги.
+   Параметры user оставлены для совместимости — сервер их не использует.
+   Чат: { id, listingId, buyer, seller, listing: { brand, model, price }, createdAt }
+   Сообщение: { id, chatId, from, text, createdAt } (buyer, seller, from — логины) */
 
-const chatDb = {
-  chats: () => store.get(KEYS.chats, []),
-  messages: () => store.get(KEYS.messages, []),
-  saveChats: (list) => store.set(KEYS.chats, list),
-  saveMessages: (list) => store.set(KEYS.messages, list),
-};
+const chatFromRow = (r) => ({
+  id: r.id,
+  listingId: r.listing_id,
+  buyer: nameOf(r.buyer),
+  seller: nameOf(r.seller),
+  listing: r.listing || {},
+  createdAt: ts(r.created_at),
+});
 
-const isParticipant = (chat, user) => chat.buyer === user || chat.seller === user;
+const messageFromRow = (m) => ({ id: m.id, chatId: m.chat_id, from: nameOf(m.sender), text: m.text, createdAt: ts(m.created_at) });
 
-function unreadIn(chat, user, messages) {
-  const since = chat.readAt?.[user] || 0;
-  return messages.filter((m) => m.chatId === chat.id && m.from !== user && m.createdAt > since).length;
-}
+// id сообщений, отправленных из этой вкладки: их не нужно перерисовывать, когда они придут через Realtime
+const sentHere = new Set();
 
 const chatApi = {
-  async listChats(user) {
-    const messages = chatDb.messages();
-    return chatDb.chats()
-      .filter((c) => isParticipant(c, user))
-      .map((c) => {
-        const own = messages.filter((m) => m.chatId === c.id);
-        return { ...c, lastMessage: own[own.length - 1] || null, unread: unreadIn(c, user, messages) };
-      })
-      .sort((a, b) => (b.lastMessage?.createdAt || b.createdAt) - (a.lastMessage?.createdAt || a.createdAt));
+  // Диалоги текущего пользователя с последним сообщением и числом непрочитанных
+  async listChats() {
+    if (!db.me) return [];
+    const rows = must(await sb.rpc('my_chats'));
+    await ensureProfiles(rows.flatMap((r) => [r.buyer, r.seller, r.last_sender]));
+    return rows.map((r) => ({
+      ...chatFromRow(r),
+      lastMessage: r.last_at ? { from: nameOf(r.last_sender), text: r.last_text, createdAt: ts(r.last_at) } : null,
+      unread: r.unread,
+    }));
   },
 
-  async getChat(chatId) {
-    return chatDb.chats().find((c) => c.id === chatId) || null;
-  },
-
-  // Один чат на пару «покупатель + машина»: если он уже есть — возвращаем его
-  async openChat(listing, buyer) {
-    if (listing.owner === buyer) throw new Error('own-listing');
-    const chats = chatDb.chats();
-    const existing = chats.find((c) => c.listingId === listing.id && c.buyer === buyer);
-    if (existing) return existing;
-    const chat = {
-      id: uid(),
-      listingId: listing.id,
-      buyer,
-      seller: listing.owner,
-      createdAt: Date.now(),
-      readAt: {},
+  // Один чат на пару «покупатель + объявление»: если он уже есть — возвращаем его
+  async openChat(listing) {
+    if (!db.me || listing.ownerId === db.me.id) throw new Error('own-listing');
+    const find = async () => must(await sb.from('chats').select('*')
+      .eq('listing_id', listing.id).eq('buyer', db.me.id).maybeSingle());
+    const existing = await find();
+    if (existing) return chatFromRow(existing);
+    const { data, error } = await sb.from('chats').insert({
+      listing_id: listing.id,
+      seller: listing.ownerId,
       // Название и цена на момент начала диалога — чтобы чат читался, даже если объявление снимут
       listing: { brand: listing.brand, model: listing.model, price: listing.price },
-    };
-    chatDb.saveChats([...chats, chat]);
-    return chat;
+    }).select().single();
+    if (error?.code === '23505') return chatFromRow(await find()); // чат успели создать в другой вкладке
+    if (error) throw error;
+    return chatFromRow(data);
   },
 
   async getMessages(chatId) {
-    return chatDb.messages().filter((m) => m.chatId === chatId);
+    const rows = must(await sb.from('messages').select('*').eq('chat_id', chatId).order('created_at'));
+    return rows.map(messageFromRow);
   },
 
   async sendMessage(chatId, from, text) {
-    const chat = await chatApi.getChat(chatId);
-    if (!chat || !isParticipant(chat, from)) throw new Error('forbidden');
-    const message = { id: uid(), chatId, from, text, createdAt: Date.now() };
-    chatDb.saveMessages([...chatDb.messages(), message]);
-    await chatApi.markRead(chatId, from);
-    return message;
+    const row = must(await sb.from('messages').insert({ chat_id: chatId, text }).select().single());
+    sentHere.add(row.id);
+    await chatApi.markRead(chatId);
+    return messageFromRow(row);
   },
 
-  async markRead(chatId, user) {
-    const chats = chatDb.chats();
-    const chat = chats.find((c) => c.id === chatId);
-    if (!chat || !isParticipant(chat, user)) return;
-    chat.readAt = { ...chat.readAt, [user]: Date.now() };
-    chatDb.saveChats(chats);
+  async markRead(chatId) {
+    if (db.me) await sb.rpc('mark_chat_read', { chat: chatId });
   },
 
-  async unreadTotal(user) {
-    const messages = chatDb.messages();
-    return chatDb.chats().filter((c) => isParticipant(c, user)).reduce((n, c) => n + unreadIn(c, user, messages), 0);
-  },
-
-  async deleteUserData(user) {
-    const ids = new Set(chatDb.chats().filter((c) => isParticipant(c, user)).map((c) => c.id));
-    chatDb.saveChats(chatDb.chats().filter((c) => !ids.has(c.id)));
-    chatDb.saveMessages(chatDb.messages().filter((m) => !ids.has(m.chatId)));
+  async unreadTotal() {
+    if (!db.me) return 0;
+    try {
+      return must(await sb.rpc('my_chats')).reduce((n, r) => n + r.unread, 0);
+    } catch {
+      return 0;
+    }
   },
 };
+
+// Новые сообщения приходят сразу (Supabase Realtime). База присылает только сообщения из своих диалогов
+let messagesChannel = null;
+function subscribeMessages() {
+  if (messagesChannel) {
+    sb.removeChannel(messagesChannel);
+    messagesChannel = null;
+  }
+  if (!sb || !db.me) return;
+  messagesChannel = sb.channel(`messages-${db.me.id}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      if (sentHere.delete(payload.new.id)) return;
+      onMessagesChanged();
+    })
+    .subscribe();
+}
+
+// Перерисовывает счётчики и открытый диалог, сохраняя недописанный текст
+async function onMessagesChanged() {
+  refreshUnread();
+  if (currentRoute.name !== 'account' || !String(currentRoute.param || '').startsWith('messages')) return;
+  const input = $('#chat-input');
+  const draft = input?.value || '';
+  const hadFocus = input && document.activeElement === input;
+  await renderMessagesTab(currentUser(), String(currentRoute.param).slice('messages:'.length) || null);
+  const fresh = $('#chat-input');
+  if (fresh) {
+    fresh.value = draft;
+    if (hadFocus) fresh.focus();
+  }
+}
 
 /* ---------- Сообщения: интерфейс ---------- */
 
@@ -3408,9 +3699,11 @@ async function bindContactSeller(car) {
   $('#write-seller')?.addEventListener('click', () => startChat(car.id));
   const link = $('#own-chats-link');
   if (link) {
-    const chats = await chatApi.listChats(currentUser());
-    const n = chats.filter((c) => c.listingId === car.id).length;
-    if (link.isConnected) link.textContent = t('chat.ownChats', { n });
+    try {
+      const chats = await chatApi.listChats(currentUser());
+      const n = chats.filter((c) => c.listingId === car.id).length;
+      if (link.isConnected) link.textContent = t('chat.ownChats', { n });
+    } catch { /* останется ссылка «Открыть сообщения» */ }
   }
 }
 
@@ -3453,7 +3746,12 @@ function messagesHtml(messages, user) {
 }
 
 async function renderMessagesTab(user, chatId) {
-  const chats = await chatApi.listChats(user);
+  let chats = [];
+  try {
+    chats = await chatApi.listChats(user);
+  } catch (err) {
+    toast(t(authError(err)), 'error');
+  }
   const main = $('#account-main');
   if (!main) return;
   const active = chatId ? chats.find((c) => c.id === chatId) : null;
@@ -3478,12 +3776,17 @@ async function renderMessagesTab(user, chatId) {
 }
 
 async function renderThread(chat, user) {
-  await chatApi.markRead(chat.id, user);
+  let messages = [];
+  try {
+    await chatApi.markRead(chat.id, user);
+    messages = await chatApi.getMessages(chat.id);
+  } catch (err) {
+    toast(t(authError(err)), 'error');
+  }
   // После прочтения убираем значок непрочитанных у этого диалога в списке
   document.querySelector('.chat-item.active')?.classList.remove('unread');
   document.querySelector('.chat-item.active .badge')?.remove();
-
-  const messages = await chatApi.getMessages(chat.id);
+  if (!$('#chat-thread')) return; // пока ждали ответа, пользователь ушёл со страницы
   const listing = chatListing(chat);
   const partner = partnerOf(chat, user);
   const carInner = `<img class="chat-thumb" src="${chatPhoto(chat)}" alt="">
@@ -3528,10 +3831,13 @@ async function renderThread(chat, user) {
   $('#chat-compose').addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if (!text) return input.focus();
+    const sendBtn = e.target.querySelector('.chat-send');
+    if (!text || sendBtn.disabled) return input.focus();
+    sendBtn.disabled = true; // от двойной отправки, пока ждём сервер
     try {
       await chatApi.sendMessage(chat.id, user, text);
     } catch {
+      sendBtn.disabled = false;
       return toast(t('chat.sendFailed'), 'error');
     }
     await renderMessagesTab(user, chat.id);
@@ -3544,17 +3850,23 @@ async function renderThread(chat, user) {
 
 const ACCOUNT_TABS = ['profile', 'messages', 'listings', 'security'];
 
-const getUser = (username) => getUsers().find((u) => u.username === username) || null;
-const profileOf = (username) => getUser(username)?.profile || {};
+// Профиль пользователя; свой профиль — вместе с личным телефоном
+const profileOf = (username) => ({
+  ...(getUser(username)?.profile || {}),
+  ...(username && username === db.me?.username ? { phone: db.me.phone } : {}),
+});
 const displayName = (username) => profileOf(username).name || username;
 
-// Сохраняет изменения пользователя. Может бросить QuotaExceededError — ловим в местах вызова
-function updateUser(username, patch) {
-  const users = getUsers();
-  const i = users.findIndex((u) => u.username === username);
-  if (i < 0) return;
-  users[i] = { ...users[i], ...patch };
-  store.set(KEYS.users, users);
+// Сохраняет поля своего профиля на сервере. Бросает исключение при ошибке
+async function saveProfile(fields) {
+  rememberProfile(must(await sb.from('profiles').update(fields).eq('id', db.me.id).select(PROFILE_COLS).single()));
+}
+
+// Телефон из профиля хранится в личных данных пользователя (его видит только он сам)
+async function savePhone(phone) {
+  if (phone === db.me.phone) return;
+  must(await sb.auth.updateUser({ data: { phone } }));
+  db.me.phone = phone;
 }
 
 // Круглая аватарка: фото из профиля или инициалы
@@ -3566,7 +3878,7 @@ function avatarHtml(username, size = 40) {
   return `<span class="avatar" style="${style}" aria-hidden="true">${esc(initials)}</span>`;
 }
 
-// Фото профиля обрезаем до квадрата 256×256 — около 20 КБ в localStorage
+// Фото профиля обрезаем до квадрата 256×256 — около 20 КБ
 function squareAvatar(dataUrl, size = 256) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -3712,24 +4024,38 @@ function renderProfileTab(user) {
     e.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) return toast(t('photos.skipped'), 'error');
+    let dataUrl;
     try {
-      const avatar = await squareAvatar(await readFileAsDataURL(file));
-      updateUser(user, { profile: { ...profileOf(user), avatar } });
-    } catch (err) {
-      return toast(isQuotaError(err) ? t('sell.quota') : t('photos.unreadable', { name: file.name }), 'error');
+      dataUrl = await squareAvatar(await readFileAsDataURL(file));
+    } catch {
+      return toast(t('photos.unreadable', { name: file.name }), 'error');
     }
+    const old = profileOf(user).avatar;
+    try {
+      // Новое имя файла при каждой замене — иначе браузер покажет старое фото из кэша
+      const avatar = await uploadPhoto(`${db.me.id}/avatar-${Date.now().toString(36)}.jpg`, dataUrl);
+      await saveProfile({ avatar });
+    } catch (err) {
+      return toast(t(authError(err)), 'error');
+    }
+    if (old) removePhotos([old]);
     refreshKeepingDraft();
     toast(t('profile.photoSaved'));
   });
 
-  $('#p-avatar-remove')?.addEventListener('click', () => {
-    const { avatar, ...rest } = profileOf(user);
-    try { updateUser(user, { profile: rest }); } catch { return toast(t('err.storage'), 'error'); }
+  $('#p-avatar-remove')?.addEventListener('click', async () => {
+    const old = profileOf(user).avatar;
+    try {
+      await saveProfile({ avatar: '' });
+    } catch (err) {
+      return toast(t(authError(err)), 'error');
+    }
+    removePhotos([old]);
     refreshKeepingDraft();
     toast(t('profile.photoRemoved'));
   });
 
-  $('#profile-form').addEventListener('submit', (e) => {
+  $('#profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     const val = (k) => (data[k] || '').trim();
@@ -3738,13 +4064,14 @@ function renderProfileTab(user) {
     const showError = (key) => { $('#profile-error').textContent = t(key); };
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('profile.badEmail');
     if (telegram && !/^[A-Za-z0-9_]{5,32}$/.test(telegram)) return showError('profile.badTelegram');
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
     try {
-      const { about, ...rest } = profileOf(user); // «О себе» больше нет — убираем старое значение
-      updateUser(user, {
-        profile: { ...rest, name: val('name'), city: val('city'), phone: val('phone'), email, telegram },
-      });
-    } catch {
-      return showError('err.storage');
+      await saveProfile({ name: val('name'), city: val('city'), email, telegram });
+      await savePhone(val('phone'));
+    } catch (err) {
+      btn.disabled = false;
+      return showError(authError(err));
     }
     renderNav('account');
     viewAccount('profile');
@@ -3754,19 +4081,12 @@ function renderProfileTab(user) {
 
 function renderListingsTab(user) {
   const mine = getListings().filter((l) => l.owner === user).sort(SORTERS.new);
-  const usedMb = storageUsage() / 1024 / 1024;
-  const pct = Math.min(100, (usedMb / 5) * 100);
-  const usedText = new Intl.NumberFormat(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(usedMb);
 
   $('#account-main').innerHTML = `
     <div class="page-head">
       <div>
         <h2 class="account-title">${t('my.title')}</h2>
         <p>${mine.length ? `${mine.length} ${plural('plural.listings', mine.length)}` : t('my.none')}</p>
-      </div>
-      <div class="storage-info" title="${t('my.storageHint')}">
-        ${t('my.storage', { used: usedText })}
-        <div class="storage-bar"><i style="width:${pct}%"></i></div>
       </div>
       <a href="#" data-go="sell" class="btn btn-primary">${t('nav.sell')}</a>
     </div>
@@ -3785,7 +4105,10 @@ function renderListingsTab(user) {
 function renderSecurityTab(user) {
   $('#account-main').innerHTML = `
     <form id="password-form" class="panel account-form" novalidate>
-      <div class="account-form-head"><h2>${t('security.title')}</h2></div>
+      <div class="account-form-head">
+        <h2>${t('security.title')}</h2>
+        <p>${esc(t('security.loginEmail', { email: db.me?.email || '' }))}</p>
+      </div>
       <div class="form-grid two">
         <div class="field span-all">
           <label for="pw-current">${t('security.current')}</label>
@@ -3814,15 +4137,21 @@ function renderSecurityTab(user) {
     e.preventDefault();
     const { current = '', next = '', repeat = '' } = Object.fromEntries(new FormData(e.target));
     const showError = (key) => { $('#password-error').textContent = t(key); };
-    const account = getUser(user);
-    if (!account || account.hash !== await hashPassword(current, account.salt)) return showError('security.wrongCurrent');
     if (next.length < 6) return showError('err.passwordShort');
     if (next !== repeat) return showError('err.passwordMismatch');
-    const salt = uid();
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
     try {
-      updateUser(user, { salt, hash: await hashPassword(next, salt) });
-    } catch {
-      return showError('err.storage');
+      // Сначала проверяем текущий пароль: повторный вход с ним
+      const check = await sb.auth.signInWithPassword({ email: db.me.email, password: current });
+      if (check.error) {
+        const key = authError(check.error);
+        return showError(key === 'err.badLogin' ? 'security.wrongCurrent' : key);
+      }
+      const { error } = await sb.auth.updateUser({ password: next });
+      if (error) return showError(authError(error));
+    } finally {
+      btn.disabled = false;
     }
     e.target.reset();
     $('#password-error').textContent = '';
@@ -3832,14 +4161,20 @@ function renderSecurityTab(user) {
   $('#delete-account').addEventListener('click', async () => {
     const ok = await confirmDialog(t('security.deleteTitle'), t('security.deleteText'), t('security.deleteBtn'));
     if (!ok) return;
+    // Фото удаляем сами, остальное (профиль, объявления, чаты) база удалит вместе с аккаунтом
+    const mine = db.listings.filter((l) => l.owner === user);
+    await removePhotos([...mine.flatMap((l) => l.photos), profileOf(user).avatar]);
     try {
-      store.set(KEYS.users, getUsers().filter((u) => u.username !== user));
-      saveListings(getListings().filter((l) => l.owner !== user));
-      await chatApi.deleteUserData(user);
-      localStorage.removeItem(KEYS.session);
-    } catch {
-      return toast(t('err.storage'), 'error');
+      must(await sb.rpc('delete_my_account'));
+    } catch (err) {
+      return toast(t(authError(err)), 'error');
     }
+    try { await sb.auth.signOut({ scope: 'local' }); } catch { /* аккаунта уже нет */ }
+    db.listings = db.listings.filter((l) => l.owner !== user);
+    db.users.delete(user);
+    db.byId.delete(db.me.id);
+    db.me = null;
+    subscribeMessages();
     toast(t('security.deleted'));
     go('home');
   });
@@ -4031,8 +4366,8 @@ function readFileAsDataURL(file) {
   });
 }
 
-/* Уменьшаем картинку через canvas и снова получаем base64 (JPEG),
-   иначе пара фото с телефона заполнит весь localStorage. */
+/* Уменьшаем картинку через canvas и снова получаем base64 (JPEG):
+   фото с телефона весят по 5–10 МБ, а после уменьшения — около 200 КБ. */
 function downscaleImage(dataUrl, maxSide = 1280, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -4092,13 +4427,16 @@ function renderPreviews() {
     + Array.from({ length: processingCount }, () => `<div class="preview loading">${t('photos.loading')}</div>`).join('');
 }
 
-function onSellSubmit(e) {
+let publishing = false;
+
+async function onSellSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const errorEl = $('#sell-error');
   const data = Object.fromEntries(new FormData(form));
   const trimmed = (k) => (data[k] || '').trim();
 
+  if (publishing) return;
   if (processingCount > 0) {
     errorEl.textContent = t('sell.processing');
     return;
@@ -4120,10 +4458,10 @@ function onSellSubmit(e) {
     return;
   }
 
-  const listing = {
-    id: uid(),
-    owner: currentUser(),
-    createdAt: Date.now(),
+  if (!db.me) return requireLogin('sell');
+  const id = newId();
+  const row = {
+    id,
     brand: brandKey(trimmed('brand')),
     model: trimmed('model'),
     year,
@@ -4132,24 +4470,42 @@ function onSellSubmit(e) {
     vehicle: data.vehicle,
     fuel: data.fuel,
     transmission: data.transmission || '',
-    power: data.power ? Math.round(Number(data.power)) : '',
+    power: data.power ? Math.round(Number(data.power)) : null,
     body: data.body || '',
     color: trimmed('color'),
     city: trimmed('city'),
     phone: trimmed('phone'),
     description: trimmed('description'),
-    photos: [...pendingPhotos],
   };
 
+  // Сначала загружаем фото в Storage, потом сохраняем объявление со ссылками на них
+  const submitBtn = $('#sell-submit');
+  const status = (text) => { if (submitBtn) submitBtn.textContent = text; };
+  const photos = [...pendingPhotos];
+  const uploaded = [];
+  publishing = true;
+  submitBtn.disabled = true;
+  errorEl.textContent = '';
   try {
-    saveListings([listing, ...getListings()]);
+    for (const [i, src] of photos.entries()) {
+      status(t('sell.uploading', { n: i + 1, total: photos.length }));
+      uploaded.push(await uploadPhoto(`${db.me.id}/${id}/${i + 1}.jpg`, src));
+    }
+    status(t('sell.publishing'));
+    const saved = must(await sb.from('listings').insert({ ...row, photos: uploaded }).select().single());
+    db.listings.unshift(listingFromRow(saved));
   } catch (err) {
-    errorEl.textContent = isQuotaError(err) ? t('sell.quota') : t('sell.saveFailed');
+    removePhotos(uploaded);
+    errorEl.textContent = `${t('sell.saveFailed')} ${t(authError(err))}`;
+    status(t('sell.submit'));
+    if (submitBtn) submitBtn.disabled = false;
     return;
+  } finally {
+    publishing = false;
   }
   pendingPhotos = [];
   toast(t('sell.published'));
-  go('car', listing.id);
+  go('car', id);
 }
 
 /* ---------- Модальные окна: вход / регистрация и подтверждение ---------- */
@@ -4194,9 +4550,14 @@ function openAuth(tab = 'login', loginRequired = false) {
       <button type="button" class="tab${!isLogin ? ' active' : ''}" data-tab="register" role="tab">${t('auth.tabRegister')}</button>
     </div>
     <form class="auth-form" id="auth-form" novalidate>
-      <div class="field">
+      ${isLogin ? '' : `<div class="field">
         <label for="a-user">${t('auth.username')}</label>
-        <input id="a-user" name="username" autocomplete="username" required>
+        <input id="a-user" name="username" autocomplete="nickname" maxlength="20" required aria-describedby="a-user-hint">
+        <span class="hint" id="a-user-hint">${t('auth.usernameHint')}</span>
+      </div>`}
+      <div class="field">
+        <label for="a-email">${t('auth.email')}</label>
+        <input id="a-email" name="email" type="email" autocomplete="email" maxlength="120" required>
       </div>
       <div class="field">
         <label for="a-pass">${t('auth.password')}</label>
@@ -4206,36 +4567,122 @@ function openAuth(tab = 'login', loginRequired = false) {
         <label for="a-pass2">${t('auth.password2')}</label>
         <input id="a-pass2" name="password2" type="password" autocomplete="new-password" required>
       </div>`}
-      <p class="form-error" id="auth-error"></p>
+      <p class="form-error" id="auth-error" role="alert"></p>
       <button type="submit" class="btn btn-primary btn-block">${isLogin ? t('auth.submitLogin') : t('auth.submitRegister')}</button>
+      ${isLogin ? `<p class="auth-extra"><button type="button" class="link-btn" id="auth-forgot">${t('auth.forgot')}</button></p>` : ''}
     </form>`;
   openModal();
-  $('#a-user').focus();
+  $(isLogin ? '#a-email' : '#a-user').focus();
 
   $('#modal-body .tabs').addEventListener('click', (e) => {
     const tabBtn = e.target.closest('[data-tab]');
     if (tabBtn && tabBtn.dataset.tab !== tab) openAuth(tabBtn.dataset.tab, loginRequired);
   });
+  $('#auth-forgot')?.addEventListener('click', () => openForgot($('#a-email').value, loginRequired));
 
   $('#auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button[type=submit]');
-    const { username = '', password = '', password2 = '' } = Object.fromEntries(new FormData(e.target));
+    if (btn.disabled) return;
+    const { username = '', email = '', password = '', password2 = '' } = Object.fromEntries(new FormData(e.target));
     btn.disabled = true;
-    const error = isLogin ? await login(username, password) : await register(username, password, password2);
+    const error = isLogin ? await login(email, password) : await register(username, email, password, password2);
     btn.disabled = false;
+    if (error === 'auth.checkEmail') {
+      // Подтверждение почты включено в Supabase: показываем подсказку вместо ошибки
+      $('#modal-body').innerHTML = `
+        <h2 id="modal-title">${t('auth.registerTitle')}</h2>
+        <p class="modal-text">${esc(t('auth.checkEmail', { email: email.trim() }))}</p>
+        <button type="button" class="btn btn-primary btn-block" id="auth-to-login">${t('auth.submitLogin')}</button>`;
+      $('#auth-to-login').addEventListener('click', () => openAuth('login', loginRequired));
+      return;
+    }
     if (error) {
       $('#auth-error').textContent = t(error);
       return;
     }
     const target = afterLogin;
     closeModal();
-    toast(t(isLogin ? 'auth.welcomeBack' : 'auth.welcomeNew', { name: currentUser() }));
+    subscribeMessages();
+    toast(t(isLogin ? 'auth.welcomeBack' : 'auth.welcomeNew', { name: displayName(currentUser()) }));
     if (typeof target === 'function') {
       router();
       target();
     } else if (target && target !== currentRoute.name) go(target);
     else router();
+  });
+}
+
+// «Забыли пароль?»: Supabase присылает письмо со ссылкой на сайт
+function openForgot(email = '', loginRequired = false) {
+  $('#modal-body').innerHTML = `
+    <h2 id="modal-title">${t('auth.forgotTitle')}</h2>
+    <p class="modal-text">${t('auth.forgotText')}</p>
+    <form class="auth-form" id="forgot-form" novalidate>
+      <div class="field">
+        <label for="f-email">${t('auth.email')}</label>
+        <input id="f-email" name="email" type="email" autocomplete="email" maxlength="120" value="${esc(email)}" required>
+      </div>
+      <p class="form-error" id="forgot-error" role="alert"></p>
+      <button type="submit" class="btn btn-primary btn-block">${t('auth.forgotSend')}</button>
+      <p class="auth-extra"><button type="button" class="link-btn" id="forgot-back">${t('auth.backToLogin')}</button></p>
+    </form>`;
+  openModal();
+  $('#f-email').focus();
+  $('#forgot-back').addEventListener('click', () => openAuth('login', loginRequired));
+  $('#forgot-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type=submit]');
+    const value = $('#f-email').value.trim();
+    if (!EMAIL_RE.test(value)) {
+      $('#forgot-error').textContent = t('err.email');
+      return;
+    }
+    btn.disabled = true;
+    const { error } = sb ? await sb.auth.resetPasswordForEmail(value, { redirectTo: siteUrl() }) : { error: { status: 0 } };
+    btn.disabled = false;
+    if (error) {
+      $('#forgot-error').textContent = t(authError(error));
+      return;
+    }
+    $('#forgot-form').innerHTML = `<p class="modal-text">${t('auth.forgotSent')}</p>
+      <button type="button" class="btn btn-primary btn-block" data-close>${t('help.close')}</button>`;
+  });
+}
+
+// Пришли по ссылке из письма: сессия уже открыта, осталось задать новый пароль
+function openNewPassword() {
+  if ($('#newpass-form') && !$('#modal').hidden) return;
+  $('#modal-body').innerHTML = `
+    <h2 id="modal-title">${t('auth.newPasswordTitle')}</h2>
+    <p class="modal-text">${t('auth.newPasswordText')}</p>
+    <form class="auth-form" id="newpass-form" novalidate>
+      <div class="field">
+        <label for="n-pass">${t('security.new')}</label>
+        <input id="n-pass" name="next" type="password" autocomplete="new-password" required>
+      </div>
+      <div class="field">
+        <label for="n-pass2">${t('auth.password2')}</label>
+        <input id="n-pass2" name="repeat" type="password" autocomplete="new-password" required>
+      </div>
+      <p class="form-error" id="newpass-error" role="alert"></p>
+      <button type="submit" class="btn btn-primary btn-block">${t('security.save')}</button>
+    </form>`;
+  openModal();
+  $('#n-pass').focus();
+  $('#newpass-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { next = '', repeat = '' } = Object.fromEntries(new FormData(e.target));
+    const showError = (key) => { $('#newpass-error').textContent = t(key); };
+    if (next.length < 6) return showError('err.passwordShort');
+    if (next !== repeat) return showError('err.passwordMismatch');
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true;
+    const { error } = await sb.auth.updateUser({ password: next });
+    btn.disabled = false;
+    if (error) return showError(authError(error));
+    closeModal();
+    toast(t('security.changed'));
   });
 }
 
@@ -4495,30 +4942,71 @@ function router({ keepScroll = false } = {}) {
   }
   renderFooter(); // подсвечиваем открытую страницу в футере
   window.scrollTo(0, keepScroll ? scrollY : 0);
+  if (booted) refreshInBackground();
 }
 
-// Синхронизация между вкладками: вход/выход, новые объявления или смена языка в другой вкладке
+// Страницы, которые можно тихо перерисовать, когда с сервера пришли новые объявления
+const LIVE_ROUTES = ['home', 'search', 'car', 'favorites', 'compare'];
+
+function refreshInBackground() {
+  const route = currentRoute;
+  refreshData().then((changed) => {
+    if (!changed || currentRoute !== route || !LIVE_ROUTES.includes(route.name)) return;
+    // Не мешаем, пока человек что-то вводит или в открытом окне
+    if (document.activeElement?.matches('input, textarea, select') || !$('#modal').hidden) return;
+    router({ keepScroll: true });
+  });
+}
+
+// Синхронизация между вкладками: язык, избранное и сравнение.
+// Вход и выход Supabase передаёт между вкладками сам (см. onAuthChange)
 window.addEventListener('storage', (e) => {
   if (e.key === KEYS.lang && LANGS[e.newValue]) return setLang(e.newValue);
-  if ([KEYS.session, KEYS.listings].includes(e.key) && currentRoute.name !== 'sell') router();
   if ([KEYS.favorites, KEYS.compare].includes(e.key)) {
     if (['favorites', 'compare'].includes(currentRoute.name)) router({ keepScroll: true });
     else updateSavedUI();
   }
-  if ([KEYS.chats, KEYS.messages].includes(e.key)) {
+});
+
+// Когда вкладка снова на экране — подтягиваем свежие объявления и счётчик сообщений
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && booted) {
+    refreshInBackground();
     refreshUnread();
-    if (currentRoute.name === 'account' && String(currentRoute.param || '').startsWith('messages')) {
-      const draft = $('#chat-input')?.value || '';
-      renderMessagesTab(currentUser(), String(currentRoute.param).slice('messages:'.length) || null)
-        .then(() => { if (draft && $('#chat-input')) $('#chat-input').value = draft; });
-    }
   }
 });
 
-seedIfNeeded();
-applyStaticText();
-try { history.replaceState(currentRoute, ''); } catch { /* ignore */ }
-router();
+let booted = false;
+
+async function boot() {
+  try { OLD_KEYS.forEach((k) => localStorage.removeItem(k)); } catch { /* хранилище недоступно */ }
+  buildExamples();
+  applyStaticText();
+  try { history.replaceState(currentRoute, ''); } catch { /* ignore */ }
+  app.innerHTML = `<div class="empty"><p>${t('app.loading')}</p></div>`;
+
+  let session = null;
+  if (sb) {
+    try {
+      session = (await sb.auth.getSession()).data.session;
+    } catch { /* без сессии — как гость */ }
+  }
+  await loadData();
+  await loadSession(session);
+  booted = true;
+  router();
+  subscribeMessages();
+  if (db.failed) toast(t('err.load'), 'error');
+
+  // Пришли по ссылке из письма Supabase: убираем служебную часть адреса
+  if (RECOVERY_LINK || AUTH_LINK_ERROR) {
+    try { history.replaceState(currentRoute, '', siteUrl() + location.search); } catch { /* ignore */ }
+  }
+  if (RECOVERY_LINK && db.me) openNewPassword();
+  else if (AUTH_LINK_ERROR) toast(t('auth.linkExpired'), 'error');
+}
+
+boot();
 </script>
 
 </body></html>
