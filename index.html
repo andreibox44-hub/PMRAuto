@@ -396,6 +396,7 @@ textarea { resize: vertical; min-height: 120px; }
 .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .auth-form { display: flex; flex-direction: column; gap: 14px; }
 .auth-extra { margin: -4px 0 0; text-align: center; }
+.other-input { margin-top: 6px; }
 
 /* ---------- Toast ---------- */
 .toast {
@@ -973,6 +974,8 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   </button>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<!-- Справочник марок и моделей (window.VEHICLE_CATALOG) -->
+<script src="catalog.js"></script>
 <!-- Библиотека Supabase (база, вход, фото). integrity — защита от подмены файла на CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"
   integrity="sha384-KX6Y/AMIv9qA8TLCDul2JatZWeyrJVgj3Xu/0r30Nr05xO8md1+wHAgtdsRV9LoE" crossorigin="anonymous"></script>
@@ -1341,9 +1344,14 @@ const I18N = {
     'sell.required': 'Поля со звёздочкой обязательны',
     'sell.basics': 'Основное',
     'sell.brand': 'Марка',
-    'sell.brandPh': 'Например, Audi',
+    'sell.chooseBrand': 'Выберите марку',
+    'sell.chooseModel': 'Выберите модель',
+    'form.other': 'Другая',
+    'form.otherBrandPh': 'Введите марку',
+    'form.otherModelPh': 'Введите модель',
+    'brands.popular': 'Популярные марки',
+    'brands.all': 'Все марки',
     'sell.model': 'Модель',
-    'sell.modelPh': 'Например, A4 Avant 2.0 TDI',
     'sell.year': 'Год выпуска',
     'sell.mileage': 'Пробег, км',
     'sell.price': 'Цена, €',
@@ -1761,9 +1769,14 @@ const I18N = {
     'sell.required': 'Fields marked with an asterisk are required',
     'sell.basics': 'Basics',
     'sell.brand': 'Make',
-    'sell.brandPh': 'e.g. Audi',
+    'sell.chooseBrand': 'Choose a make',
+    'sell.chooseModel': 'Choose a model',
+    'form.other': 'Other',
+    'form.otherBrandPh': 'Type the make',
+    'form.otherModelPh': 'Type the model',
+    'brands.popular': 'Popular makes',
+    'brands.all': 'All makes',
     'sell.model': 'Model',
-    'sell.modelPh': 'e.g. A4 Avant 2.0 TDI',
     'sell.year': 'Year',
     'sell.mileage': 'Mileage, km',
     'sell.price': 'Price, €',
@@ -2550,13 +2563,14 @@ function setLang(next) {
   const form = $('#sell-form');
   if (currentRoute.name === 'sell' && form) {
     const values = Object.fromEntries(new FormData(form));
+    const { brand, model } = readSellBrandModel();
     renderNav('sell');
     renderSellForm();
     const fresh = $('#sell-form');
     for (const [name, value] of Object.entries(values)) {
       if (fresh.elements[name]) fresh.elements[name].value = value;
     }
-    $('#brand-list').innerHTML = brandListOptions(values.vehicle || 'car');
+    setSellBrandModel(values.vehicle || 'car', brand, model);
     renderPreviews();
     return;
   }
@@ -2620,26 +2634,16 @@ const VEHICLE_ICONS = {
 };
 const vehicleIcon = (v) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VEHICLE_ICONS[v]}</svg>`;
 
-// Марки по видам транспорта. Первые 12 — самые популярные, по ним строятся плитки на главной;
-// в выпадающих списках марки идут по алфавиту
-const BRANDS_BY_VEHICLE = {
-  car: ['Volkswagen', 'BMW', 'Mercedes-Benz', 'Audi', 'Toyota', 'Opel', 'Ford', 'Škoda', 'Renault', 'Hyundai', 'Tesla', 'Kia',
-    'Abarth', 'Acura', 'Alfa Romeo', 'Aston Martin', 'Bentley', 'Bugatti', 'Buick', 'BYD', 'Cadillac', 'Changan', 'Chery',
-    'Chevrolet', 'Chrysler', 'Citroën', 'Cupra', 'Dacia', 'Daewoo', 'Daihatsu', 'Datsun', 'Dodge', 'Dongfeng', 'DS', 'Exeed',
-    'FAW', 'Ferrari', 'Fiat', 'GAC', 'GAZ', 'Geely', 'Genesis', 'Great Wall', 'Haval', 'Honda', 'Hongqi', 'Hummer', 'Infiniti',
-    'Isuzu', 'IZh', 'JAC', 'Jaecoo', 'Jaguar', 'Jeep', 'Jetour', 'Lada', 'Lamborghini', 'Lancia', 'Land Rover', 'Lexus',
-    'Li Auto', 'Lifan', 'Lincoln', 'Lotus', 'Lynk & Co', 'Maserati', 'Maybach', 'Mazda', 'McLaren', 'MG', 'Mini', 'Mitsubishi',
-    'Moskvich', 'Nio', 'Nissan', 'Omoda', 'Peugeot', 'Polestar', 'Pontiac', 'Porsche', 'Ram', 'Ravon', 'Rolls-Royce', 'Rover',
-    'Saab', 'Seat', 'Smart', 'SsangYong', 'Subaru', 'Suzuki', 'Tank', 'UAZ', 'Volvo', 'Voyah', 'Xpeng', 'ZAZ', 'Zeekr'],
-  moto: ['BMW', 'Honda', 'Yamaha', 'Kawasaki', 'Ducati', 'KTM', 'Harley-Davidson', 'Suzuki', 'Triumph', 'Vespa',
-    'Aprilia', 'Bajaj', 'Benelli', 'CFMOTO', 'Husqvarna', 'Indian', 'IZh', 'Jawa', 'Kymco', 'Minsk', 'Moto Guzzi',
-    'MV Agusta', 'Piaggio', 'Royal Enfield', 'SYM', 'Ural', 'Voge', 'Zero', 'Zontes'],
-  truck: ['Mercedes-Benz', 'MAN', 'Scania', 'Volvo', 'DAF', 'Iveco', 'Renault', 'KAMAZ', 'MAZ',
-    'Dongfeng', 'FAW', 'Foton', 'Ford Trucks', 'Freightliner', 'GAZ', 'Hino', 'Howo', 'Isuzu', 'JAC', 'Kenworth', 'Mack',
-    'Mitsubishi Fuso', 'Peterbilt', 'Shacman', 'Sitrak', 'Tatra', 'Ural', 'ZIL'],
-  van: ['Volkswagen', 'Mercedes-Benz', 'Ford', 'Renault', 'Fiat', 'Opel', 'Citroën', 'Peugeot', 'Toyota', 'Iveco',
-    'Chevrolet', 'Dacia', 'Dodge', 'GAZ', 'Hyundai', 'Isuzu', 'Kia', 'LDV', 'Maxus', 'Mitsubishi', 'Nissan', 'Ram', 'UAZ'],
-};
+/* Марки и модели берутся из справочника catalog.js (window.VEHICLE_CATALOG).
+   Списки сортируются по алфавиту, а популярные марки показываются вверху. */
+const CATALOG = window.VEHICLE_CATALOG || {};
+const catalogOf = (v) => CATALOG[v] || { popular: [], models: {} };
+// Сортировка «как у людей»: без регистра, а числа по значению (2, 3, 6, 323)
+const byName = (a, b) => String(a).localeCompare(String(b), 'en', { numeric: true, sensitivity: 'base' });
+const BRANDS_BY_VEHICLE = Object.fromEntries(VEHICLES.map((v) => [v, Object.keys(catalogOf(v).models).sort(byName)]));
+// Популярные марки по порядку популярности: первые 12 — плитки на главной
+const POPULAR_BRANDS = Object.fromEntries(VEHICLES.map((v) => [v, catalogOf(v).popular || []]));
+const MODELS = Object.fromEntries(VEHICLES.map((v) => [v, catalogOf(v).models]));
 
 // Русские названия отечественных марок — показываются в скобках: «Lada (ВАЗ)»
 const BRAND_RU = {
@@ -2672,91 +2676,6 @@ const BRAND_INDEX = new Map([
   ...Object.entries(BRAND_ALIASES).flatMap(([b, names]) => names.map((n) => [normBrand(n), b])),
 ]);
 const brandKey = (name) => (name ? BRAND_INDEX.get(normBrand(name)) || String(name).trim() : '');
-
-// Справочник популярных моделей. Модель в поиске совпадает, если название в объявлении с неё начинается
-const MODELS = {
-  car: {
-    Audi: ['A1', 'A3', 'A4', 'A6', 'A8', 'Q3', 'Q5', 'Q7', 'Q8', 'e-tron'],
-    BMW: ['118i', '120d', '320d', '320i', '330e', '520d', '530d', 'X1', 'X3', 'X5', 'X6', 'i4'],
-    'Mercedes-Benz': ['A 180', 'A 200', 'C 200', 'C 220 d', 'E 220 d', 'S 350', 'GLA', 'GLC', 'GLE', 'EQA'],
-    Volkswagen: ['Polo', 'Golf', 'Jetta', 'Passat', 'T-Roc', 'Tiguan', 'Touareg', 'Touran', 'ID.3', 'ID.4'],
-    Toyota: ['Yaris', 'Corolla', 'Camry', 'C-HR', 'RAV4', 'Prius', 'Land Cruiser', 'Hilux'],
-    Tesla: ['Model 3', 'Model Y', 'Model S', 'Model X'],
-    Opel: ['Corsa', 'Astra', 'Insignia', 'Mokka', 'Zafira', 'Vectra'],
-    Ford: ['Fiesta', 'Focus', 'Mondeo', 'Kuga', 'Puma', 'Mustang', 'Transit Connect'],
-    'Škoda': ['Fabia', 'Rapid', 'Octavia', 'Superb', 'Karoq', 'Kodiaq', 'Enyaq'],
-    Renault: ['Clio', 'Mégane', 'Logan', 'Sandero', 'Duster', 'Captur', 'Zoe'],
-    Hyundai: ['i20', 'i30', 'Accent', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Kona', 'Ioniq 5'],
-    Kia: ['Rio', 'Ceed', 'Cerato', 'Optima', 'Sportage', 'Sorento', 'Niro', 'EV6'],
-    Lada: ['Granta', 'Vesta', 'Niva', 'Largus', 'XRAY', 'Priora', 'Kalina', '2107', '2110'],
-    GAZ: ['Volga', '31105'],
-    UAZ: ['Patriot', 'Hunter', '452'],
-    Dacia: ['Logan', 'Sandero', 'Duster', 'Jogger', 'Spring'],
-    Mitsubishi: ['ASX', 'Outlander', 'Pajero', 'L200', 'Lancer', 'Eclipse Cross'],
-    Nissan: ['Micra', 'Note', 'Juke', 'Qashqai', 'X-Trail', 'Leaf', 'Navara'],
-    Honda: ['Jazz', 'Civic', 'Accord', 'HR-V', 'CR-V'],
-    Mazda: ['2', '3', '6', 'CX-3', 'CX-30', 'CX-5', 'MX-5'],
-    Peugeot: ['208', '308', '508', '2008', '3008', '5008', 'Partner'],
-    'Citroën': ['C3', 'C4', 'C5 Aircross', 'Berlingo'],
-    Fiat: ['500', 'Panda', 'Punto', 'Tipo', 'Doblò'],
-    Chevrolet: ['Spark', 'Aveo', 'Lacetti', 'Cruze', 'Captiva', 'Niva'],
-    Daewoo: ['Matiz', 'Lanos', 'Nexia', 'Gentra'],
-    Volvo: ['S60', 'S90', 'V60', 'V90', 'XC40', 'XC60', 'XC90'],
-    Porsche: ['911', 'Cayenne', 'Macan', 'Panamera', 'Taycan'],
-    Lexus: ['IS', 'ES', 'GS', 'NX', 'RX', 'LX'],
-    'Land Rover': ['Range Rover', 'Range Rover Sport', 'Range Rover Evoque', 'Discovery', 'Defender'],
-    Subaru: ['Impreza', 'XV', 'Forester', 'Outback'],
-    Suzuki: ['Swift', 'SX4', 'Vitara', 'Jimny'],
-    Seat: ['Ibiza', 'Leon', 'Arona', 'Ateca'],
-    Jeep: ['Renegade', 'Compass', 'Cherokee', 'Grand Cherokee', 'Wrangler'],
-    Mini: ['Cooper', 'Countryman', 'Clubman'],
-    Infiniti: ['Q50', 'QX50', 'QX60', 'FX'],
-    SsangYong: ['Tivoli', 'Korando', 'Rexton', 'Actyon'],
-    Chery: ['Tiggo 4', 'Tiggo 7 Pro', 'Tiggo 8', 'Arrizo 8'],
-    Geely: ['Coolray', 'Atlas', 'Monjaro', 'Emgrand'],
-    Haval: ['Jolion', 'F7', 'H6', 'Dargo'],
-    BYD: ['Atto 3', 'Dolphin', 'Seal', 'Han', 'Song Plus'],
-    MG: ['ZS', 'HS', 'MG4', 'MG5'],
-    Omoda: ['C5', 'S5'],
-  },
-  moto: {
-    BMW: ['R 1250 GS', 'R 1300 GS', 'F 900 R', 'S 1000 RR'],
-    Honda: ['CB650R', 'CBR600RR', 'Africa Twin', 'PCX 125'],
-    Yamaha: ['MT-07', 'MT-09', 'Tracer 9', 'XMAX 300', 'R1'],
-    Kawasaki: ['Z650', 'Z900', 'Ninja 650', 'Versys 650'],
-    Ducati: ['Monster', 'Multistrada', 'Panigale', 'Scrambler'],
-    KTM: ['390 Duke', '790 Duke', '890 Adventure', '1290 Super Adventure'],
-    'Harley-Davidson': ['Sportster', 'Street Glide', 'Fat Boy'],
-    Suzuki: ['GSX-R', 'V-Strom', 'SV650'],
-    Ural: ['Gear Up', 'cT'],
-    IZh: ['Planeta', 'Jupiter'],
-  },
-  truck: {
-    'Mercedes-Benz': ['Actros', 'Arocs', 'Atego'],
-    MAN: ['TGX', 'TGS', 'TGL', 'TGM'],
-    Scania: ['R 450', 'S 500', 'P 280'],
-    Volvo: ['FH', 'FM', 'FL'],
-    DAF: ['XF', 'XG', 'CF', 'LF'],
-    Iveco: ['S-Way', 'Stralis', 'Eurocargo'],
-    KAMAZ: ['5490', '65115', '43118', '6520'],
-    MAZ: ['5440', '6312', '6430'],
-    Ural: ['4320', 'Next'],
-  },
-  van: {
-    Volkswagen: ['Transporter', 'Crafter', 'Caddy', 'Multivan', 'ID. Buzz'],
-    'Mercedes-Benz': ['Sprinter', 'Vito', 'V-Klasse'],
-    Ford: ['Transit', 'Transit Custom', 'Tourneo'],
-    Renault: ['Trafic', 'Master', 'Kangoo'],
-    Fiat: ['Ducato', 'Doblò', 'Scudo'],
-    Opel: ['Vivaro', 'Movano', 'Combo'],
-    'Citroën': ['Jumpy', 'Jumper', 'Berlingo'],
-    Peugeot: ['Expert', 'Boxer', 'Partner'],
-    Toyota: ['Proace', 'HiAce'],
-    GAZ: ['Gazelle', 'Gazelle Next', 'Sobol'],
-    UAZ: ['452', 'Profi'],
-    Hyundai: ['H-1', 'Staria'],
-  },
-};
 
 const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURRENT_YEAR - i);
 const PRICE_OPTIONS = [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
@@ -2855,36 +2774,141 @@ const SORTERS = {
 
 const byAlpha = (a, b) => a.localeCompare(b);
 
+/* ---------- Марки и модели: списки и сопоставление ---------- */
+
+// Значение пункта «Другая» в списках марок и моделей: при нём появляется поле для ручного ввода
+const OTHER = '__other';
+
+// Сравнение названий моделей без регистра, пробелов, дефисов и точек: «CX-5» = «cx5», «ID.3» = «ID3»
+const normModel = (s) => String(s || '').toLowerCase().replace(/[\s\-.]/g, '');
+const sameBrand = (a, b) => normBrand(brandKey(a)) === normBrand(brandKey(b));
+
+// Модели марки из справочника (для одного вида транспорта или для всех)
+const catalogModels = (brand, vehicle) => [...new Set((vehicle ? [vehicle] : VEHICLES).flatMap((v) => MODELS[v]?.[brand] || []))];
+
+/* Модель объявления → модель из справочника, или null, если такой там нет.
+   «Golf 1.5 eTSI» → Golf, «Range Rover Sport HSE» → Range Rover Sport (самое длинное совпадение),
+   «320d Touring» → BMW 3 Series, «C 200 4MATIC» → Mercedes-Benz C-Class. */
+function resolveModel(brand, model, vehicle = '') {
+  const list = catalogModels(brand, vehicle);
+  const m = normModel(model);
+  if (!m || !list.length) return null;
+  let best = null;
+  for (const c of list) {
+    const n = normModel(c);
+    if (n && m.startsWith(n) && (!best || n.length > normModel(best).length)) best = c;
+  }
+  if (best) return best;
+  const text = String(model).trim();
+  if (brand === 'BMW') {
+    const d = text.match(/^([1-8])\d{2}/); // 320d → 3 Series
+    if (d && list.includes(`${d[1]} Series`)) return `${d[1]} Series`;
+  }
+  if (brand === 'Mercedes-Benz' || brand === 'Maybach') {
+    const l = text.match(/^([A-Z]{1,3})\s?\d/); // C 200 → C-Class, ML 350 → M-Class
+    if (l) {
+      const name = l[1] === 'ML' ? 'M' : l[1];
+      return [`${name}-Class`, name].find((c) => list.includes(c)) || null;
+    }
+  }
+  return null;
+}
+const modelOf = (car) => resolveModel(brandKey(car.brand), car.model, vehicleOf(car));
+
+// Марки для поиска: из справочника и из объявлений (если продавец ввёл свою марку)
 function brandsFor(vehicle) {
   const known = vehicle ? BRANDS_BY_VEHICLE[vehicle] : Object.values(BRANDS_BY_VEHICLE).flat();
   const listed = getListings().filter((l) => !vehicle || vehicleOf(l) === vehicle).map((l) => brandKey(l.brand));
-  return [...new Set([...known, ...listed])].sort(byAlpha);
+  return [...new Set([...known, ...listed])].sort(byName);
 }
 
+// Модели марки: из справочника и свои модели из объявлений, которых в справочнике нет
 function modelsFor(vehicle, brand) {
   if (!brand) return [];
-  const known = [...new Set((vehicle ? [vehicle] : VEHICLES).flatMap((v) => MODELS[v]?.[brand] || []))];
-  // Модели из объявлений, которых нет в справочнике (например, редкие или с опечаткой)
+  const known = catalogModels(brand, vehicle);
   const listed = getListings()
-    .filter((l) => brandKey(l.brand) === brand && (!vehicle || vehicleOf(l) === vehicle))
-    .map((l) => l.model)
-    .filter((m) => !known.some((k) => m.toLowerCase().startsWith(k.toLowerCase())));
-  return [...known, ...[...new Set(listed)].sort(byAlpha)];
+    .filter((l) => sameBrand(l.brand, brand) && (!vehicle || vehicleOf(l) === vehicle) && !modelOf(l))
+    .map((l) => l.model.trim());
+  return [...new Set([...known, ...listed])].sort(byName);
 }
 
-// После смены вида транспорта или марки убираем значения, которых больше нет в списках
+const isCatalogBrand = (brand) => Object.values(BRANDS_BY_VEHICLE).some((list) => list.includes(brand));
+
+// После смены вида транспорта или марки убираем значения из справочника, которых больше нет в списках.
+// Свои марку и модель (введённые через «Другая») оставляем
 function normalizeFilters() {
-  if (filters.brand && !brandsFor(filters.vehicle).includes(filters.brand)) filters.brand = '';
-  if (filters.model && !modelsFor(filters.vehicle, filters.brand).includes(filters.model)) filters.model = '';
+  if (filters.brand && isCatalogBrand(filters.brand) && !brandsFor(filters.vehicle).includes(filters.brand)) {
+    filters.brand = '';
+    filters.model = '';
+  }
+  const brandModels = filters.brand ? catalogModels(filters.brand, '') : [];
+  if (filters.model && brandModels.includes(filters.model) && !modelsFor(filters.vehicle, filters.brand).includes(filters.model)) {
+    filters.model = '';
+  }
 }
+
+/* Выпадающий список марок: сначала «Популярные марки» (по алфавиту), потом «Все марки»,
+   в конце «Другая». selected — значение, которое нужно выбрать (марка, OTHER или '') */
+function brandSelectOptions(vehicle, selected, placeholder, brands = brandsFor(vehicle)) {
+  const popular = (POPULAR_BRANDS[vehicle || 'car'] || []).filter((b) => brands.includes(b)).sort(byName);
+  let marked = false; // марка есть в обеих группах — отмечаем выбранной только первую
+  const opt = (b) => {
+    const on = !marked && b === selected;
+    if (on) marked = true;
+    return `<option value="${esc(b)}"${on ? ' selected' : ''}>${esc(brandLabel(b))}</option>`;
+  };
+  const groups = popular.length
+    ? `<optgroup label="${esc(t('brands.popular'))}">${popular.map(opt).join('')}</optgroup>
+       <optgroup label="${esc(t('brands.all'))}">${brands.map(opt).join('')}</optgroup>`
+    : brands.map(opt).join('');
+  return `<option value="">${esc(placeholder)}</option>${groups}`
+    + `<option value="${OTHER}"${selected === OTHER ? ' selected' : ''}>${esc(t('form.other'))}</option>`;
+}
+
+// Выпадающий список моделей (уже по алфавиту) с «Другая» в конце
+function modelSelectOptions(models, selected, placeholder) {
+  return selectOptions(models, selected, placeholder)
+    + `<option value="${OTHER}"${selected === OTHER ? ' selected' : ''}>${esc(t('form.other'))}</option>`;
+}
+
+/* В поиске «Другая» хранится прямо в фильтре: своя марка — это filters.brand, которой нет в списке.
+   Пока поле ещё пустое, помним, что «Другая» выбрана, в searchOther */
+const searchOther = { brand: false, model: false };
+
+function resetFilters(extra = {}) {
+  Object.assign(filters, DEFAULT_FILTERS, extra);
+  searchOther.brand = false;
+  searchOther.model = false;
+}
+
+// Что выбрать в списке: значение из списка, «Другая» (своё значение или пустое поле) или ничего
+function searchSelected(kind, list) {
+  const value = filters[kind];
+  if (value) return list.includes(value) ? value : OTHER;
+  return searchOther[kind] ? OTHER : '';
+}
+
+const brandOptions = () => {
+  const brands = brandsFor(filters.vehicle);
+  return brandSelectOptions(filters.vehicle, searchSelected('brand', brands), t('filters.allBrands'), brands);
+};
+const modelOptions = () => {
+  const models = modelsFor(filters.vehicle, filters.brand);
+  return modelSelectOptions(models, searchSelected('model', models),
+    filters.brand ? t('search.anyModel') : t('search.chooseBrandFirst'));
+};
+const brandOtherShown = () => searchSelected('brand', brandsFor(filters.vehicle)) === OTHER;
+const modelOtherShown = () => !!filters.brand && searchSelected('model', modelsFor(filters.vehicle, filters.brand)) === OTHER;
+const ownValue = (kind, list) => (filters[kind] && !list.includes(filters[kind]) ? filters[kind] : '');
 
 function matches(car, f = filters) {
   const n = (v) => (v === '' ? null : Number(v));
   const words = f.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const title = `${car.brand} ${car.model}`.toLowerCase();
   return (!f.vehicle || vehicleOf(car) === f.vehicle)
-    && (!f.brand || brandKey(car.brand) === f.brand)
-    && (!f.model || car.model.toLowerCase().startsWith(f.model.toLowerCase()))
+    && (!f.brand || sameBrand(car.brand, f.brand))
+    // Модель из справочника или своя: «C 200 4MATIC» найдётся по C-Class, «Golf 1.5» — по Golf
+    && (!f.model || modelOf(car) === f.model || normModel(car.model).startsWith(normModel(f.model)))
     && (n(f.yearFrom) === null || car.year >= n(f.yearFrom))
     && (n(f.yearTo) === null || car.year <= n(f.yearTo))
     && (n(f.priceFrom) === null || car.price >= n(f.priceFrom))
@@ -2908,10 +2932,6 @@ function selectOptions(values, selected, placeholder, label = (v) => v) {
 // Список кодов → <option> с переведёнными подписями
 const codedOptions = (group, codes, selected, placeholder) => selectOptions(codes, selected, placeholder, (c) => t(`${group}.${c}`));
 
-const brandOptions = () => selectOptions(brandsFor(filters.vehicle), filters.brand, t('filters.allBrands'), brandLabel);
-const modelOptions = () => selectOptions(modelsFor(filters.vehicle, filters.brand), filters.model,
-  filters.brand ? t('search.anyModel') : t('search.chooseBrandFirst'));
-
 // Поля поиска — общие для главной и для фильтров на странице результатов
 function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
   const euro = (v) => `${num(v)} €`;
@@ -2927,10 +2947,16 @@ function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
     <div class="field">
       <label for="${p}-brand">${t('filters.brand')}</label>
       <select id="${p}-brand" name="brand">${brandOptions()}</select>
+      <input id="${p}-brand-other" name="brandText" class="other-input" maxlength="40" autocomplete="off"
+        placeholder="${esc(t('form.otherBrandPh'))}" aria-label="${esc(t('form.otherBrandPh'))}"
+        value="${esc(ownValue('brand', brandsFor(filters.vehicle)))}"${brandOtherShown() ? '' : ' hidden'}>
     </div>
     <div class="field">
       <label for="${p}-model">${t('search.model')}</label>
       <select id="${p}-model" name="model"${filters.brand ? '' : ' disabled'}>${modelOptions()}</select>
+      <input id="${p}-model-other" name="modelText" class="other-input" maxlength="60" autocomplete="off"
+        placeholder="${esc(t('form.otherModelPh'))}" aria-label="${esc(t('form.otherModelPh'))}"
+        value="${esc(ownValue('model', modelsFor(filters.vehicle, filters.brand)))}"${modelOtherShown() ? '' : ' hidden'}>
     </div>
     <div class="field">
       <span class="label">${t('search.year')}</span>
@@ -2964,18 +2990,54 @@ function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
     </div>`;
 }
 
-// Любое изменение поля сразу попадает в filters; марка и модель пересобираются под вид транспорта и марку
+/* Любое изменение поля сразу попадает в filters; марка и модель пересобираются под вид транспорта и марку.
+   «Другая» в списке марки или модели показывает поле для ручного ввода (brandText / modelText) */
 function bindSearchForm(form, onUpdate) {
+  const el = form.elements;
+  const syncModel = () => {
+    el.model.innerHTML = modelOptions();
+    el.model.disabled = !filters.brand;
+    el.modelText.hidden = !modelOtherShown();
+    if (el.modelText.hidden) el.modelText.value = '';
+  };
+  const syncBrand = () => {
+    el.brand.innerHTML = brandOptions();
+    el.brandText.hidden = !brandOtherShown();
+    if (el.brandText.hidden) el.brandText.value = '';
+    syncModel();
+  };
   const handle = (e) => {
     const { name, value } = e.target;
-    if (!(name in filters) || filters[name] === value) return;
-    filters[name] = value;
-    if (name === 'brand') filters.model = '';
-    if (name === 'vehicle' || name === 'brand') {
-      normalizeFilters();
-      form.elements.brand.innerHTML = brandOptions();
-      form.elements.model.innerHTML = modelOptions();
-      form.elements.model.disabled = !filters.brand;
+    if (name === 'brand' || name === 'model') {
+      const other = value === OTHER;
+      const next = other ? '' : value;
+      if (searchOther[name] === other && filters[name] === next) return;
+      searchOther[name] = other;
+      filters[name] = next;
+      if (name === 'brand') {
+        filters.model = '';
+        searchOther.model = false;
+        syncBrand();
+      } else syncModel();
+      if (other) (name === 'brand' ? el.brandText : el.modelText).focus();
+    } else if (name === 'brandText' || name === 'modelText') {
+      const kind = name === 'brandText' ? 'brand' : 'model';
+      const text = value.trim();
+      if (filters[kind] === text) return;
+      filters[kind] = text;
+      if (kind === 'brand') {
+        // Своя марка: список моделей — только свои модели из объявлений этой марки
+        filters.model = '';
+        searchOther.model = false;
+        syncModel();
+      }
+    } else {
+      if (!(name in filters) || filters[name] === value) return;
+      filters[name] = value;
+      if (name === 'vehicle') {
+        normalizeFilters();
+        syncBrand();
+      }
     }
     onUpdate();
   };
@@ -3288,12 +3350,12 @@ function viewHome() {
   $('#brand-grid').addEventListener('click', (e) => {
     const tile = e.target.closest('[data-brand]');
     if (!tile) return;
-    Object.assign(filters, DEFAULT_FILTERS, { vehicle: filters.vehicle, brand: tile.dataset.brand });
+    resetFilters({ vehicle: filters.vehicle, brand: tile.dataset.brand });
     go('search');
   });
 
   $('#home-reset')?.addEventListener('click', () => {
-    Object.assign(filters, DEFAULT_FILTERS, { vehicle: filters.vehicle });
+    resetFilters({ vehicle: filters.vehicle });
     viewHome();
   });
 }
@@ -3305,7 +3367,7 @@ function updateShowButton() {
 
 function brandTilesHtml() {
   const ofType = getListings().filter((l) => vehicleOf(l) === filters.vehicle);
-  return BRANDS_BY_VEHICLE[filters.vehicle].slice(0, 12).map((brand) => {
+  return POPULAR_BRANDS[filters.vehicle].slice(0, 12).map((brand) => {
     const n = ofType.filter((l) => brandKey(l.brand) === brand).length;
     return `<button type="button" class="brand-tile" data-brand="${esc(brand)}">
       <span class="brand-name">${esc(brandLabel(brand))}</span>
@@ -3358,7 +3420,7 @@ function viewSearch() {
     renderResults();
   });
   $('#r-reset').addEventListener('click', () => {
-    Object.assign(filters, DEFAULT_FILTERS, { vehicle: filters.vehicle, sort: filters.sort });
+    resetFilters({ vehicle: filters.vehicle, sort: filters.sort });
     viewSearch();
   });
   $('#filters-toggle').addEventListener('click', (e) => {
@@ -3367,7 +3429,7 @@ function viewSearch() {
   });
   $('#results-grid').addEventListener('click', (e) => {
     if (!e.target.closest('[data-reset-all]')) return;
-    Object.assign(filters, DEFAULT_FILTERS, { vehicle: '' });
+    resetFilters({ vehicle: '' });
     viewSearch();
   });
   renderResults();
@@ -4279,7 +4341,7 @@ function viewSell(id = null) {
 function fillSellForm(car) {
   const form = $('#sell-form');
   const values = {
-    vehicle: vehicleOf(car), brand: car.brand, model: car.model, year: car.year, mileage: car.mileage,
+    vehicle: vehicleOf(car), year: car.year, mileage: car.mileage,
     price: car.price, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
     body: code(car.body) || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
     description: loc(car.description),
@@ -4287,7 +4349,7 @@ function fillSellForm(car) {
   for (const [name, value] of Object.entries(values)) {
     if (form.elements[name]) form.elements[name].value = value;
   }
-  $('#brand-list').innerHTML = brandListOptions(values.vehicle);
+  setSellBrandModel(values.vehicle, car.brand, car.model);
 }
 
 function renderSellForm() {
@@ -4313,12 +4375,15 @@ function renderSellForm() {
         </fieldset>
         <div class="field">
           <label for="s-brand">${t('sell.brand')}${req}</label>
-          <input id="s-brand" name="brand" list="brand-list" required maxlength="40" placeholder="${esc(t('sell.brandPh'))}">
-          <datalist id="brand-list">${brandListOptions('car')}</datalist>
+          <select id="s-brand" name="brandSelect" required>${brandSelectOptions('car', '', t('sell.chooseBrand'), BRANDS_BY_VEHICLE.car)}</select>
+          <input id="s-brand-other" name="brandOther" class="other-input" maxlength="40" autocomplete="off"
+            placeholder="${esc(t('form.otherBrandPh'))}" aria-label="${esc(t('form.otherBrandPh'))}" hidden>
         </div>
         <div class="field">
           <label for="s-model">${t('sell.model')}${req}</label>
-          <input id="s-model" name="model" required maxlength="60" placeholder="${esc(t('sell.modelPh'))}">
+          <select id="s-model" name="modelSelect" required disabled>${modelSelectOptions([], '', t('search.chooseBrandFirst'))}</select>
+          <input id="s-model-other" name="modelOther" class="other-input" maxlength="60" autocomplete="off"
+            placeholder="${esc(t('form.otherModelPh'))}" aria-label="${esc(t('form.otherModelPh'))}" hidden>
         </div>
         <div class="field">
           <label for="s-year">${t('sell.year')}${req}</label>
@@ -4420,15 +4485,61 @@ function renderSellForm() {
     }
   });
 
-  // Подсказки в поле «Марка» меняются вместе с видом транспорта
+  // Марки зависят от вида транспорта, модели — от марки; «Другая» открывает поле для ручного ввода
   $('#sell-form').addEventListener('change', (e) => {
-    if (e.target.name === 'vehicle') $('#brand-list').innerHTML = brandListOptions(e.target.value);
+    const { name, value } = e.target;
+    if (name === 'vehicle') {
+      const { brand, model } = readSellBrandModel();
+      setSellBrandModel(value, brand, model);
+    }
+    if (name === 'brandSelect') {
+      $('#s-brand-other').hidden = value !== OTHER;
+      updateSellModels();
+      if (value === OTHER) $('#s-brand-other').focus();
+    }
+    if (name === 'modelSelect') {
+      $('#s-model-other').hidden = value !== OTHER;
+      if (value === OTHER) $('#s-model-other').focus();
+    }
   });
   $('#sell-form').addEventListener('submit', onSellSubmit);
 }
 
-const brandListOptions = (vehicle) => [...(BRANDS_BY_VEHICLE[vehicle] || BRANDS_BY_VEHICLE.car)]
-  .sort(byAlpha).map((b) => `<option value="${esc(b)}">${BRAND_RU[b] ? esc(brandLabel(b)) : ''}</option>`).join('');
+/* Марка и модель в форме: выпадающие списки из справочника и «Другая» с полем для ввода.
+   Ставит в форму марку и модель (например, при редактировании или смене вида транспорта) */
+function setSellBrandModel(vehicle, brand = '', model = '') {
+  const known = BRANDS_BY_VEHICLE[vehicle] || BRANDS_BY_VEHICLE.car;
+  const key = brandKey(brand);
+  const selected = !brand ? '' : known.includes(key) ? key : OTHER;
+  $('#s-brand').innerHTML = brandSelectOptions(vehicle, selected, t('sell.chooseBrand'), known);
+  $('#s-brand-other').value = selected === OTHER ? brand : '';
+  $('#s-brand-other').hidden = selected !== OTHER;
+  updateSellModels(model);
+}
+
+// Пересобирает список моделей под выбранную марку. Пока марка не выбрана — список неактивен
+function updateSellModels(model = '') {
+  const vehicle = $('#sell-form').elements.vehicle.value || 'car';
+  const brand = $('#s-brand').value;
+  const models = brand && brand !== OTHER ? catalogModels(brand, vehicle).sort(byName) : [];
+  // Модель из списка выбираем, только если она совпадает целиком: «C 200 4MATIC» останется своей,
+  // чтобы при редактировании не потерять подробности. У своей марки списка нет — сразу поле ввода
+  const exact = models.find((m) => normModel(m) === normModel(model));
+  const selected = !brand ? '' : exact || (model || brand === OTHER ? OTHER : '');
+  const select = $('#s-model');
+  select.innerHTML = modelSelectOptions(models, selected, brand ? t('sell.chooseModel') : t('search.chooseBrandFirst'));
+  select.disabled = !brand;
+  $('#s-model-other').hidden = selected !== OTHER;
+  $('#s-model-other').value = selected === OTHER && !exact ? model : '';
+}
+
+// Марка и модель, выбранные в форме (или введённые вручную через «Другая»)
+function readSellBrandModel() {
+  const f = $('#sell-form')?.elements;
+  if (!f) return { brand: '', model: '' };
+  const pick = (select, input) => (select.value === OTHER ? input.value.trim() : select.value);
+  return { brand: pick(f.brandSelect, f.brandOther), model: f.modelSelect.disabled ? '' : pick(f.modelSelect, f.modelOther) };
+}
 
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -4515,8 +4626,9 @@ async function onSellSubmit(e) {
     return;
   }
   const errors = [];
-  if (!trimmed('brand')) errors.push(t('field.brand'));
-  if (!trimmed('model')) errors.push(t('field.model'));
+  const { brand, model } = readSellBrandModel();
+  if (!brand) errors.push(t('field.brand'));
+  if (!model) errors.push(t('field.model'));
   const year = Number(data.year);
   if (!Number.isInteger(year) || year < 1950 || year > CURRENT_YEAR + 1) errors.push(t('field.year', { range: `1950–${CURRENT_YEAR + 1}` }));
   const mileage = Number(data.mileage);
@@ -4535,8 +4647,8 @@ async function onSellSubmit(e) {
   const editing = editingId ? db.listings.find((l) => l.id === editingId) : null;
   const id = editing ? editing.id : newId();
   const row = {
-    brand: brandKey(trimmed('brand')),
-    model: trimmed('model'),
+    brand: brandKey(brand),
+    model,
     year,
     mileage: Math.round(mileage),
     price: Math.round(price),
@@ -5036,7 +5148,7 @@ function setHistory(route, replace = false) {
 
 function go(name, param = null, { replace = false } = {}) {
   if (name === 'catalog') { // «Каталог» и «Смотреть все» — все объявления без фильтров
-    Object.assign(filters, DEFAULT_FILTERS, { vehicle: '' });
+    resetFilters({ vehicle: '' });
     name = 'search';
   }
   if (name === 'search') param = { ...filters };
@@ -5126,7 +5238,7 @@ function router({ keepScroll = false } = {}) {
       viewCompare();
       break;
     case 'search':
-      if (param) Object.assign(filters, DEFAULT_FILTERS, param);
+      if (param) resetFilters(param);
       renderNav('search');
       viewSearch();
       break;
