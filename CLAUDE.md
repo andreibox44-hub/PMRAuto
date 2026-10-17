@@ -8,7 +8,7 @@ PMRAuto — площадка объявлений о продаже трансп
 
 ## На чём сделан
 
-- **Один файл `index.html`** (~230 КБ, ~4200 строк): разметка, CSS и JavaScript внутри.
+- **Один файл `index.html`** (~250 КБ, ~4500 строк): разметка, CSS и JavaScript внутри.
   Рядом лежат иконки (`favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`) и картинка
   превью для соцсетей `og-image.png` (1200×630).
 - **Важно:** первая строка файла сразу закрывает `<head>`. Метатеги (title, description,
@@ -31,7 +31,7 @@ PMRAuto — площадка объявлений о продаже трансп
   Маршруты: `home`, `search`, `car`, `sell`, `account`, `page`, `favorites`, `compare`
   (`my` — старый адрес).
 - Каждая страница рисуется функцией `view*()` (`viewHome`, `viewSearch`, `viewDetail`,
-  `viewSell`, `viewAccount`, `viewPage`) в `<main id="app">`.
+  `viewSell`, `viewAccount`, `viewPage`, `viewFavorites`, `viewCompare`) в `<main id="app">`.
 - Тексты интерфейса — в объекте `I18N` (`ru`/`en`), вывод через `t('ключ')`, склонения — `plural()`.
   **Любой новый текст нужно добавлять в оба языка.**
 - Характеристики (топливо, КПП, кузов) хранятся кодами (`petrol`, `automatic`, `sedan`…),
@@ -115,6 +115,9 @@ PMRAuto — площадка объявлений о продаже трансп
 - **17.10.2026** — пункт 6 закрыт: избранное и сравнение. Проверено в Edge без окна
   (компьютер, телефон 390 px, тёмная тема, английский): ошибок в консоли нет, шапка на
   телефоне не стала выше.
+- **Итог сессии 17.10.2026:** выполнены пункты 1, 2, 3, 4, 6, 7 плана. Сайт опубликован
+  на GitHub Pages и обновляется после каждого `git push` в `main` (проверено).
+  Открытым остался только пункт 5.
 - **Как проверять в браузере:** `python -m http.server 8765` в папке проекта + Edge
   `--headless=new --remote-debugging-port=9333`, управлять через DevTools Protocol из Node
   (встроенный WebSocket). Edge: `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`.
