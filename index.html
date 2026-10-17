@@ -402,6 +402,12 @@ textarea { resize: vertical; min-height: 120px; }
 .field label.check { text-transform: none; letter-spacing: normal; font-size: .92rem; font-weight: 500; color: var(--text); }
 .check input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); flex: none; }
 .check:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+/* «Ещё фильтры» в поиске: раскрывающийся блок, галочки — в один столбец */
+.more-filters { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 12px; }
+.more-filters summary { cursor: pointer; font-weight: 600; color: var(--accent); padding: 4px 0; }
+.more-filters-body { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.more-filters .features-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.more-filters .check { padding: 6px 10px; }
 .features-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 24px; }
 .features-list li::before { content: '✓'; color: var(--primary); font-weight: 700; margin-right: 8px; }
 /* Блок «Продавец» и страница продавца */
@@ -1257,6 +1263,10 @@ const I18N = {
     'search.km': 'Пробег до',
     'search.anyKm': 'Любой',
     'search.anyTransmission': 'Любая',
+    'search.more': 'Ещё фильтры',
+    'search.anyDrive': 'Любой',
+    'search.anyCondition': 'Любое',
+    'search.anyCustoms': 'Не важно',
     'search.show': { one: 'Показать {n} предложение', few: 'Показать {n} предложения', many: 'Показать {n} предложений', other: 'Показать {n} предложения' },
     'plural.offers': { one: 'предложение', few: 'предложения', many: 'предложений', other: 'предложения' },
 
@@ -1784,6 +1794,10 @@ const I18N = {
     'search.km': 'Mileage up to',
     'search.anyKm': 'Any',
     'search.anyTransmission': 'Any',
+    'search.more': 'More filters',
+    'search.anyDrive': 'Any',
+    'search.anyCondition': 'Any',
+    'search.anyCustoms': 'Any',
     'search.show': { one: 'Show {n} offer', other: 'Show {n} offers' },
     'plural.offers': { one: 'offer', other: 'offers' },
 
@@ -3003,9 +3017,15 @@ const cityDatalist = () => ALL_CITIES.map((c) => `<option value="${esc(c[lang])}
 const DEFAULT_FILTERS = {
   vehicle: 'car', brand: '', model: '', yearFrom: '', yearTo: '', priceFrom: '', priceTo: '',
   city: '', kmTo: '', fuel: '', transmission: '', q: '', sort: 'new',
+  // «Ещё фильтры» (поля базы версии 4); комплектация — коды через запятую: «ac,navigation»
+  drive: '', condition: '', customs: '', features: '',
 };
 const filters = { ...DEFAULT_FILTERS };
-const COUNTED_FILTERS = ['brand', 'model', 'yearFrom', 'yearTo', 'priceFrom', 'priceTo', 'city', 'kmTo', 'fuel', 'transmission', 'q'];
+const MORE_FILTERS = ['drive', 'condition', 'customs', 'features'];
+const COUNTED_FILTERS = ['brand', 'model', 'yearFrom', 'yearTo', 'priceFrom', 'priceTo', 'city', 'kmTo', 'fuel', 'transmission', 'q',
+  ...MORE_FILTERS];
+const CUSTOMS_OPTIONS = ['yes', 'no'];
+const filterFeatures = (f = filters) => (f.features ? f.features.split(',') : []);
 
 const SORTERS = {
   new: (a, b) => b.createdAt - a.createdAt,
@@ -3162,6 +3182,11 @@ function matches(car, f = filters) {
     && (n(f.kmTo) === null || car.mileage <= n(f.kmTo))
     && (!f.fuel || code(car.fuel) === f.fuel)
     && (!f.transmission || code(car.transmission) === f.transmission)
+    && (!f.drive || car.drive === f.drive)
+    && (!f.condition || car.condition === f.condition)
+    && (!f.customs || car.customsCleared === (f.customs === 'yes'))
+    // Комплектация: в объявлении должны быть все отмеченные пункты
+    && filterFeatures(f).every((x) => (car.features || []).includes(x))
     && words.every((w) => title.includes(w));
 }
 
@@ -3232,7 +3257,41 @@ function searchFieldsHtml(p, { withVehicle = false, withQuery = false } = {}) {
     <div class="field">
       <label for="${p}-transmission">${t('spec.transmission')}</label>
       <select id="${p}-transmission" name="transmission">${codedOptions('transmission', TRANSMISSIONS, filters.transmission, t('search.anyTransmission'))}</select>
-    </div>`;
+    </div>
+    ${moreFiltersHtml(p)}`;
+}
+
+// Раскрыт ли блок «Ещё фильтры» (помним между перерисовками; с выбранными фильтрами он открыт всегда)
+let moreFiltersOpen = false;
+
+// «Ещё фильтры»: привод, состояние, растаможка, комплектация. Пока база старее версии 4, этих полей нет
+function moreFiltersHtml(p) {
+  if (db.schema < 4) return '';
+  const chosen = filterFeatures();
+  const open = moreFiltersOpen || MORE_FILTERS.some((k) => filters[k] !== '');
+  return `
+    <details class="more-filters" id="${p}-more"${open ? ' open' : ''}>
+      <summary>${t('search.more')}</summary>
+      <div class="more-filters-body">
+        <div class="field">
+          <label for="${p}-drive">${t('spec.drive')}</label>
+          <select id="${p}-drive" name="drive">${codedOptions('drive', DRIVES, filters.drive, t('search.anyDrive'))}</select>
+        </div>
+        <div class="field">
+          <label for="${p}-condition">${t('spec.condition')}</label>
+          <select id="${p}-condition" name="condition">${codedOptions('condition', CONDITIONS, filters.condition, t('search.anyCondition'))}</select>
+        </div>
+        <div class="field">
+          <label for="${p}-customs">${t('spec.customs')}</label>
+          <select id="${p}-customs" name="customs">${selectOptions(CUSTOMS_OPTIONS, filters.customs, t('search.anyCustoms'), (v) => t(`common.${v}`))}</select>
+        </div>
+        <fieldset class="field features-field">
+          <legend class="label">${t('sell.features')}</legend>
+          <div class="features-grid">${FEATURES.map((f) => `<label class="check">
+            <input type="checkbox" name="features" value="${f}"${chosen.includes(f) ? ' checked' : ''}><span>${t(`feature.${f}`)}</span></label>`).join('')}</div>
+        </fieldset>
+      </div>
+    </details>`;
 }
 
 /* Любое изменение поля сразу попадает в filters; марка и модель пересобираются под вид транспорта и марку.
@@ -3265,6 +3324,11 @@ function bindSearchForm(form, onUpdate) {
         syncBrand();
       } else syncModel();
       if (other) (name === 'brand' ? el.brandText : el.modelText).focus();
+    } else if (name === 'features') {
+      // Галочки комплектации → коды через запятую в порядке FEATURES
+      const next = [...form.querySelectorAll('input[name="features"]:checked')].map((box) => box.value).join(',');
+      if (filters.features === next) return;
+      filters.features = next;
     } else if (name === 'brandText' || name === 'modelText') {
       const kind = name === 'brandText' ? 'brand' : 'model';
       const text = value.trim();
@@ -3288,6 +3352,7 @@ function bindSearchForm(form, onUpdate) {
   };
   form.addEventListener('input', handle);
   form.addEventListener('change', handle);
+  form.querySelector('.more-filters')?.addEventListener('toggle', (e) => { moreFiltersOpen = e.target.open; });
 }
 
 function cardHtml(car, { owner = false } = {}) {
@@ -5640,6 +5705,10 @@ function hashToRoute(hash) {
         else if (param[k] !== '') param[k] = String(convert(n, from, currency));
       }
       if (param.vehicle && !VEHICLES.includes(param.vehicle)) param.vehicle = '';
+      if (!DRIVES.includes(param.drive)) param.drive = '';
+      if (!CONDITIONS.includes(param.condition)) param.condition = '';
+      if (!CUSTOMS_OPTIONS.includes(param.customs)) param.customs = '';
+      param.features = FEATURES.filter((f) => param.features.split(',').includes(f)).join(',');
       if (!SORTERS[param.sort]) param.sort = DEFAULT_FILTERS.sort;
       return { name, param };
     }
