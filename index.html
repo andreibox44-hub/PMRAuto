@@ -507,6 +507,38 @@ main.container.container-wide { max-width: 1680px; }
 }
 
 .home-main { min-width: 0; }
+
+/* ---------- Home: рекламные места справа ---------- */
+.home-promo { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.promo-slot {
+  position: relative; width: 300px; max-width: 100%; overflow: hidden;
+  border-radius: var(--radius); background: var(--surface);
+}
+.promo-slot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.promo-mark {
+  position: absolute; top: 8px; left: 10px; z-index: 1;
+  font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
+.promo-filled .promo-mark { padding: 1px 6px; border-radius: 4px; background: var(--overlay); color: #fff; }
+.promo-empty {
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 16px; text-align: center; color: var(--muted); font-size: .88rem;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface-2);
+}
+.promo-empty b { font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
+/* Широкий экран: третья колонка, прилипает к верху, как панель поиска */
+@media (min-width: 1300px) {
+  .home-layout { grid-template-columns: minmax(280px, 22%) minmax(0, 1fr) 300px; }
+  .home-promo { position: sticky; top: calc(80px + env(safe-area-inset-top, 0px)); }
+}
+/* Уже — места переезжают под объявления, высокий баннер прячем */
+@media (max-width: 1299px) {
+  .home-promo { grid-column: 2; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .promo-300x600 { display: none; }
+}
+@media (max-width: 1000px) {
+  .home-promo { grid-column: auto; }
+}
 .hero-banner {
   position: relative;
   display: flex; align-items: flex-end;
@@ -1138,6 +1170,7 @@ const I18N = {
     'help.topic.question': 'Вопрос',
     'help.topic.problem': 'Проблема на сайте',
     'help.topic.idea': 'Предложение',
+    'help.topic.ads': 'Реклама на сайте',
     'help.message': 'Сообщение',
     'help.messagePh': 'Опишите вопрос, проблему или идею',
     'help.send': 'Отправить',
@@ -1238,6 +1271,10 @@ const I18N = {
     'results.filters': 'Фильтры',
     'results.emptyTitle': 'По вашему запросу ничего не найдено',
     'listings.noneTitle': 'Пока нет объявлений',
+    'promo.label': 'Реклама',
+    'promo.mark': 'Реклама',
+    'promo.place': 'Место для вашей рекламы',
+    'promo.contact': 'Разместить рекламу',
     'listings.noneText': 'Станьте первым: разместите объявление бесплатно за пару минут.',
     'results.emptyText': 'Попробуйте расширить диапазон цены или года, выбрать другую модель или сбросить фильтры.',
     'results.resetAll': 'Сбросить фильтры',
@@ -1660,6 +1697,7 @@ const I18N = {
     'help.topic.question': 'Question',
     'help.topic.problem': 'Problem with the site',
     'help.topic.idea': 'Suggestion',
+    'help.topic.ads': 'Advertising on the site',
     'help.message': 'Message',
     'help.messagePh': 'Describe your question, problem or idea',
     'help.send': 'Send',
@@ -1760,6 +1798,10 @@ const I18N = {
     'results.filters': 'Filters',
     'results.emptyTitle': 'No listings match your search',
     'listings.noneTitle': 'No listings yet',
+    'promo.label': 'Advertising',
+    'promo.mark': 'Ad',
+    'promo.place': 'Your ad could be here',
+    'promo.contact': 'Advertise with us',
     'listings.noneText': 'Be the first: post a free listing in a couple of minutes.',
     'results.emptyText': 'Try widening the price or year range, picking another model, or resetting the filters.',
     'results.resetAll': 'Reset filters',
@@ -3477,6 +3519,30 @@ function noListingsHtml() {
   </div>`;
 }
 
+/* Места под рекламные баннеры справа на главной. Пока img пустой — показываем заглушку
+   «Место для рекламы». Поставить баннер: img — путь к картинке (например, img/promo-1.jpg)
+   или полная ссылка на неё, url — куда ведёт клик, alt — короткое описание картинки.
+   Классы без слов ad/banner: блокировщики рекламы прячут такие блоки целиком */
+const PROMO_SLOTS = [
+  { id: 'home-right-1', w: 300, h: 600, img: '', url: '', alt: '' },
+  { id: 'home-right-2', w: 300, h: 250, img: '', url: '', alt: '' },
+];
+
+function promoHtml() {
+  return `<aside class="home-promo" aria-label="${t('promo.label')}">${PROMO_SLOTS.map((s) => {
+    const img = s.img ? `<img src="${esc(photoSrc(s.img))}" alt="${esc(s.alt)}" width="${s.w}" height="${s.h}" loading="lazy">` : '';
+    return `<div class="promo-slot promo-${s.w}x${s.h}${s.img ? ' promo-filled' : ''}" data-slot="${s.id}" style="aspect-ratio: ${s.w} / ${s.h}">
+      <span class="promo-mark">${t('promo.mark')}</span>
+      ${s.img ? (s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener sponsored">${img}</a>` : img)
+        : `<div class="promo-empty">
+            <b>${s.w} × ${s.h}</b>
+            <span>${t('promo.place')}</span>
+            <button type="button" class="link-btn" data-open-help="ads">${t('promo.contact')}</button>
+          </div>`}
+    </div>`;
+  }).join('')}</aside>`;
+}
+
 function viewHome() {
   if (!filters.vehicle) filters.vehicle = 'car'; // на главной всегда выбран один вид транспорта
   normalizeFilters();
@@ -3535,6 +3601,7 @@ function viewHome() {
           </div>
         </section>
       </div>
+      ${promoHtml()}
     </div>`;
 
   $('#hero-find').addEventListener('click', () => go('search'));
@@ -5347,7 +5414,7 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------- Форма «Задать вопрос» (отправка через Web3Forms) ---------- */
 
-const HELP_TOPICS = ['question', 'problem', 'idea'];
+const HELP_TOPICS = ['question', 'problem', 'idea', 'ads'];
 const HELP_MIN_FILL_MS = 3000;   // быстрее человек форму не заполнит — так отсекаем ботов
 const HELP_COOLDOWN_SEC = 60;    // не больше одного сообщения в минуту из одного браузера
 const HELP_MAX_LINKS = 2;        // спам обычно состоит из ссылок
@@ -5355,7 +5422,8 @@ const HELP_KEY_PLACEHOLDER = 'ВСТАВЬТЕ_КЛЮЧ_СЮДА';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let helpOpenedAt = 0;
 
-function openHelp() {
+// topic — тема, выбранная заранее (кнопка «Разместить рекламу» открывает форму с темой ads)
+function openHelp(topic) {
   const user = currentUser();
   const p = user ? profileOf(user) : {};
   $('#modal-body').innerHTML = `
@@ -5377,7 +5445,7 @@ function openHelp() {
       <div class="field">
         <label for="help-topic">${t('help.topic')}</label>
         <select id="help-topic" name="topic">
-          ${HELP_TOPICS.map((id) => `<option value="${id}">${t(`help.topic.${id}`)}</option>`).join('')}
+          ${HELP_TOPICS.map((id) => `<option value="${id}"${id === topic ? ' selected' : ''}>${t(`help.topic.${id}`)}</option>`).join('')}
         </select>
       </div>
       <div class="field">
@@ -5497,10 +5565,11 @@ function showHelpSuccess(email) {
   $('#modal-body [data-close]').focus();
 }
 
-$('#help-btn').addEventListener('click', openHelp);
+$('#help-btn').addEventListener('click', () => openHelp());
 // Кнопки «Задать вопрос» внутри страниц (например, в «Контактах»)
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-open-help]')) openHelp();
+  const btn = e.target.closest('[data-open-help]');
+  if (btn) openHelp(btn.dataset.openHelp);
 });
 
 /* ---------- Роутер ----------
