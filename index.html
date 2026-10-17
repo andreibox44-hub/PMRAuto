@@ -1018,6 +1018,10 @@ const OLD_KEYS = ['am_users', 'am_session', 'am_listings', 'am_seeded_v5', 'am_c
 const FUELS = ['petrol', 'diesel', 'hybrid', 'electric', 'gas'];
 const TRANSMISSIONS = ['automatic', 'manual'];
 const BODIES = ['sedan', 'hatchback', 'wagon', 'suv', 'coupe', 'convertible', 'minivan', 'pickup'];
+const COLORS = ['white', 'black', 'silver', 'grey', 'blue', 'lightblue', 'red', 'burgundy', 'green', 'brown', 'beige',
+  'yellow', 'orange', 'purple', 'gold', 'other'];
+const DOORS = [2, 3, 4, 5];
+const MIN_YEAR = 1930;
 // Объявления, сохранённые до появления языков, содержат русские значения
 const LEGACY_VALUES = {
   'Бензин': 'petrol', 'Дизель': 'diesel', 'Гибрид': 'hybrid', 'Электро': 'electric', 'Газ': 'gas',
@@ -1026,6 +1030,8 @@ const LEGACY_VALUES = {
   'Кабриолет': 'convertible', 'Минивэн': 'minivan', 'Пикап': 'pickup',
 };
 const code = (v) => LEGACY_VALUES[v] || v || '';
+// Цвет хранится кодом (white, black…); у старых объявлений и примеров — текстом
+const colorLabel = (v) => (COLORS.includes(v) ? t(`color.${v}`) : loc(v));
 
 const MAX_PHOTOS = 10;
 const MAX_FILE_MB = 20;
@@ -1307,6 +1313,7 @@ const I18N = {
     'spec.power': 'Мощность',
     'spec.body': 'Кузов',
     'spec.color': 'Цвет',
+    'spec.doors': 'Двери',
     'spec.city': 'Город',
     'unit.km': 'км',
     'unit.hp': 'л.с.',
@@ -1326,6 +1333,22 @@ const I18N = {
     'body.convertible': 'Кабриолет',
     'body.minivan': 'Минивэн',
     'body.pickup': 'Пикап',
+    'color.white': 'Белый',
+    'color.black': 'Чёрный',
+    'color.silver': 'Серебристый',
+    'color.grey': 'Серый',
+    'color.blue': 'Синий',
+    'color.lightblue': 'Голубой',
+    'color.red': 'Красный',
+    'color.burgundy': 'Бордовый',
+    'color.green': 'Зелёный',
+    'color.brown': 'Коричневый',
+    'color.beige': 'Бежевый',
+    'color.yellow': 'Жёлтый',
+    'color.orange': 'Оранжевый',
+    'color.purple': 'Фиолетовый',
+    'color.gold': 'Золотистый',
+    'color.other': 'Другой',
 
     'delete.title': 'Удалить объявление?',
     'delete.text': '«{name}» исчезнет из каталога вместе со всеми фото. Это действие нельзя отменить.',
@@ -1362,7 +1385,8 @@ const I18N = {
     'sell.power': 'Мощность, л.с.',
     'sell.body': 'Тип кузова',
     'sell.color': 'Цвет',
-    'sell.colorPh': 'Серый металлик',
+    'sell.doors': 'Количество дверей',
+    'sell.chooseYear': 'Выберите год',
     'sell.city': 'Город',
     'sell.cityPh': 'Тирасполь',
     'sell.phone': 'Телефон для связи',
@@ -1385,6 +1409,7 @@ const I18N = {
     'field.brand': 'марку',
     'field.model': 'модель',
     'field.year': 'год ({range})',
+    'field.power': 'мощность (только цифры, 1–3000)',
     'field.mileage': 'пробег',
     'field.price': 'цену',
     'field.fuel': 'тип топлива',
@@ -1732,6 +1757,7 @@ const I18N = {
     'spec.power': 'Power',
     'spec.body': 'Body type',
     'spec.color': 'Colour',
+    'spec.doors': 'Doors',
     'spec.city': 'City',
     'unit.km': 'km',
     'unit.hp': 'hp',
@@ -1751,6 +1777,22 @@ const I18N = {
     'body.convertible': 'Convertible',
     'body.minivan': 'MPV',
     'body.pickup': 'Pickup',
+    'color.white': 'White',
+    'color.black': 'Black',
+    'color.silver': 'Silver',
+    'color.grey': 'Grey',
+    'color.blue': 'Blue',
+    'color.lightblue': 'Light blue',
+    'color.red': 'Red',
+    'color.burgundy': 'Burgundy',
+    'color.green': 'Green',
+    'color.brown': 'Brown',
+    'color.beige': 'Beige',
+    'color.yellow': 'Yellow',
+    'color.orange': 'Orange',
+    'color.purple': 'Purple',
+    'color.gold': 'Gold',
+    'color.other': 'Other',
 
     'delete.title': 'Delete this listing?',
     'delete.text': '“{name}” will be removed from the catalogue with all its photos. This can’t be undone.',
@@ -1787,7 +1829,8 @@ const I18N = {
     'sell.power': 'Power, hp',
     'sell.body': 'Body type',
     'sell.color': 'Colour',
-    'sell.colorPh': 'Grey metallic',
+    'sell.doors': 'Number of doors',
+    'sell.chooseYear': 'Choose a year',
     'sell.city': 'City',
     'sell.cityPh': 'Tiraspol',
     'sell.phone': 'Contact phone',
@@ -1810,6 +1853,7 @@ const I18N = {
     'field.brand': 'make',
     'field.model': 'model',
     'field.year': 'year ({range})',
+    'field.power': 'power (digits only, 1–3000)',
     'field.mileage': 'mileage',
     'field.price': 'price',
     'field.fuel': 'fuel type',
@@ -1982,6 +2026,9 @@ const db = {
   me: null,            // кто вошёл: { id, username, email, phone }
   loadedAt: 0,
   failed: false,
+  // Обновлена ли схема базы (supabase/schema.sql): год выпуска с 1930 и колонка doors.
+  // Пока нет — в форме годы с 1950, а поля «Двери» нет, чтобы сохранение не ломалось
+  schemaV2: false,
 };
 
 const PROFILE_COLS = 'id, username, name, city, email, telegram, avatar, created_at';
@@ -2029,6 +2076,7 @@ function listingFromRow(r) {
     fuel: r.fuel,
     transmission: r.transmission,
     power: r.power ?? '',
+    doors: r.doors ?? '',
     body: r.body,
     color: r.color,
     city: r.city,
@@ -2044,10 +2092,12 @@ async function loadData() {
     return;
   }
   try {
-    const [profiles, listings] = await Promise.all([
+    const [profiles, listings, schema] = await Promise.all([
       sb.from('profiles').select(PROFILE_COLS),
       sb.from('listings').select('*').order('created_at', { ascending: false }).limit(1000),
+      sb.from('listings').select('doors').limit(1),
     ]);
+    db.schemaV2 = !schema.error;
     const profileRows = must(profiles);
     const listingRows = must(listings);
     db.users.clear();
@@ -2677,7 +2727,10 @@ const BRAND_INDEX = new Map([
 ]);
 const brandKey = (name) => (name ? BRAND_INDEX.get(normBrand(name)) || String(name).trim() : '');
 
-const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1979 }, (_, i) => CURRENT_YEAR - i);
+// Годы выпуска — от текущего до 1930-го, новые сверху (в форме подачи и в поиске)
+const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - MIN_YEAR + 1 }, (_, i) => CURRENT_YEAR - i);
+// В форме подачи — пока база не обновлена, только с 1950 (более ранние годы база не принимает)
+const sellYears = () => YEAR_OPTIONS.filter((y) => y >= (db.schemaV2 ? MIN_YEAR : 1950));
 const PRICE_OPTIONS = [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
 const KM_OPTIONS = [5000, 10000, 20000, 30000, 50000, 75000, 100000, 125000, 150000, 200000];
 
@@ -3204,7 +3257,8 @@ const COMPARE_ROWS = [
   ['spec.fuel', (c) => tv('fuel', c.fuel)],
   ['spec.transmission', (c) => tv('transmission', c.transmission)],
   ['spec.body', (c) => tv('body', c.body)],
-  ['spec.color', (c) => loc(c.color)],
+  ['spec.doors', (c) => c.doors || ''],
+  ['spec.color', (c) => colorLabel(c.color)],
   ['spec.city', (c) => cityLabel(cityKey(c))],
 ];
 
@@ -3491,7 +3545,8 @@ function viewDetail(id) {
     ['spec.vehicle', t(`vehicle.${vehicleOf(car)}`)], ['spec.brand', car.brand], ['spec.model', car.model], ['spec.year', car.year], ['spec.mileage', fmtKm(car.mileage)],
     ['spec.fuel', tv('fuel', car.fuel)], ['spec.transmission', tv('transmission', car.transmission)],
     ['spec.power', car.power ? `${car.power} ${t('unit.hp')}` : ''],
-    ['spec.body', tv('body', car.body)], ['spec.color', loc(car.color)], ['spec.city', cityLabel(cityKey(car))],
+    ['spec.body', tv('body', car.body)], ['spec.doors', car.doors || ''], ['spec.color', colorLabel(car.color)],
+    ['spec.city', cityLabel(cityKey(car))],
   ].filter(([, v]) => v !== '' && v != null);
   const description = loc(car.description);
 
@@ -4343,9 +4398,13 @@ function fillSellForm(car) {
   const values = {
     vehicle: vehicleOf(car), year: car.year, mileage: car.mileage,
     price: car.price, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
-    body: code(car.body) || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
+    body: code(car.body) || '', doors: car.doors || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
     description: loc(car.description),
   };
+  // Цвет, введённый текстом до появления списка, добавляем в список, чтобы он не потерялся
+  if (values.color && !COLORS.includes(values.color)) {
+    form.elements.color.insertAdjacentHTML('beforeend', `<option value="${esc(values.color)}">${esc(values.color)}</option>`);
+  }
   for (const [name, value] of Object.entries(values)) {
     if (form.elements[name]) form.elements[name].value = value;
   }
@@ -4387,15 +4446,15 @@ function renderSellForm() {
         </div>
         <div class="field">
           <label for="s-year">${t('sell.year')}${req}</label>
-          <input id="s-year" name="year" type="number" inputmode="numeric" required min="1950" max="${CURRENT_YEAR + 1}" placeholder="${CURRENT_YEAR - 4}">
+          <select id="s-year" name="year" required>${selectOptions(sellYears(), '', t('sell.chooseYear'))}</select>
         </div>
         <div class="field">
           <label for="s-mileage">${t('sell.mileage')}${req}</label>
-          <input id="s-mileage" name="mileage" type="number" inputmode="numeric" required min="0" max="2000000" placeholder="75000">
+          <input id="s-mileage" name="mileage" type="text" inputmode="numeric" pattern="[0-9]*" data-digits required maxlength="7" autocomplete="off" placeholder="75000">
         </div>
         <div class="field">
           <label for="s-price">${t('sell.price')}${req}</label>
-          <input id="s-price" name="price" type="number" inputmode="numeric" required min="1" max="10000000" placeholder="18500">
+          <input id="s-price" name="price" type="text" inputmode="numeric" pattern="[0-9]*" data-digits required maxlength="8" autocomplete="off" placeholder="18500">
         </div>
         <div class="field">
           <label for="s-fuel">${t('sell.fuel')}${req}</label>
@@ -4409,15 +4468,19 @@ function renderSellForm() {
         </div>
         <div class="field">
           <label for="s-power">${t('sell.power')}</label>
-          <input id="s-power" name="power" type="number" inputmode="numeric" min="1" max="2000" placeholder="150">
+          <input id="s-power" name="power" type="text" inputmode="numeric" pattern="[0-9]*" data-digits maxlength="4" autocomplete="off" placeholder="150">
         </div>
         <div class="field">
           <label for="s-body">${t('sell.body')}</label>
           <select id="s-body" name="body">${codedOptions('body', BODIES, '', '—')}</select>
         </div>
+        ${db.schemaV2 ? `<div class="field">
+          <label for="s-doors">${t('sell.doors')}</label>
+          <select id="s-doors" name="doors">${selectOptions(DOORS, '', '—')}</select>
+        </div>` : ''}
         <div class="field">
           <label for="s-color">${t('sell.color')}</label>
-          <input id="s-color" name="color" maxlength="30" placeholder="${esc(t('sell.colorPh'))}">
+          <select id="s-color" name="color">${codedOptions('color', COLORS, '', '—')}</select>
         </div>
         <div class="field">
           <label for="s-city">${t('sell.city')}</label>
@@ -4501,6 +4564,14 @@ function renderSellForm() {
       $('#s-model-other').hidden = value !== OTHER;
       if (value === OTHER) $('#s-model-other').focus();
     }
+  });
+  // В цене, пробеге и мощности оставляем только цифры (в том числе при вставке текста)
+  $('#sell-form').addEventListener('input', (e) => {
+    const el = e.target;
+    if (!el.matches('[data-digits]') || /^\d*$/.test(el.value)) return;
+    const caret = el.selectionStart - (el.value.slice(0, el.selectionStart).match(/\D/g) || []).length;
+    el.value = el.value.replace(/\D/g, '');
+    el.setSelectionRange(caret, caret);
   });
   $('#sell-form').addEventListener('submit', onSellSubmit);
 }
@@ -4630,11 +4701,16 @@ async function onSellSubmit(e) {
   if (!brand) errors.push(t('field.brand'));
   if (!model) errors.push(t('field.model'));
   const year = Number(data.year);
-  if (!Number.isInteger(year) || year < 1950 || year > CURRENT_YEAR + 1) errors.push(t('field.year', { range: `1950–${CURRENT_YEAR + 1}` }));
-  const mileage = Number(data.mileage);
-  if (data.mileage === '' || !Number.isFinite(mileage) || mileage < 0) errors.push(t('field.mileage'));
-  const price = Number(data.price);
-  if (!Number.isFinite(price) || price <= 0) errors.push(t('field.price'));
+  const years = sellYears();
+  if (!years.includes(year)) errors.push(t('field.year', { range: `${years[years.length - 1]}–${CURRENT_YEAR}` }));
+  const digits = (k) => /^\d+$/.test(trimmed(k));
+  const mileage = Number(trimmed('mileage'));
+  if (!digits('mileage')) errors.push(t('field.mileage'));
+  const price = Number(trimmed('price'));
+  if (!digits('price') || price <= 0) errors.push(t('field.price'));
+  const power = trimmed('power') ? Number(trimmed('power')) : null;
+  if (power !== null && (!digits('power') || power < 1 || power > 3000)) errors.push(t('field.power'));
+  const doors = DOORS.includes(Number(data.doors)) ? Number(data.doors) : null;
   if (!VEHICLES.includes(data.vehicle)) errors.push(t('field.vehicle'));
   if (!FUELS.includes(data.fuel)) errors.push(t('field.fuel'));
 
@@ -4650,14 +4726,17 @@ async function onSellSubmit(e) {
     brand: brandKey(brand),
     model,
     year,
-    mileage: Math.round(mileage),
-    price: Math.round(price),
+    mileage,
+    price,
     vehicle: data.vehicle,
     fuel: data.fuel,
     transmission: data.transmission || '',
-    power: data.power ? Math.round(Number(data.power)) : null,
+    power,
     body: data.body || '',
-    color: trimmed('color'),
+    // Цвет — код из списка; старый цвет текстом (при редактировании) сохраняем как был
+    color: COLORS.includes(data.color) || (editing && data.color === loc(editing.color)) ? data.color || '' : '',
+    // Двери отправляем, только если они выбраны или были у объявления
+    ...(doors || editing?.doors ? { doors } : {}),
     city: trimmed('city'),
     phone: trimmed('phone'),
     description: trimmed('description'),

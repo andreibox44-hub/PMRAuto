@@ -67,7 +67,7 @@ create table if not exists public.listings (
   vehicle      text not null check (vehicle in ('car', 'moto', 'truck', 'van')),
   brand        text not null check (char_length(brand) between 1 and 60),
   model        text not null check (char_length(model) between 1 and 80),
-  year         int  not null check (year between 1950 and 2100),
+  year         int  not null check (year between 1930 and 2100),
   mileage      int  not null check (mileage >= 0),
   price        int  not null check (price > 0),
   fuel         text not null check (fuel in ('petrol', 'diesel', 'hybrid', 'electric', 'gas')),
@@ -80,6 +80,12 @@ create table if not exists public.listings (
   description  text not null default '' check (char_length(description) <= 5000),
   photos       text[] not null default '{}' check (cardinality(photos) <= 10)
 );
+-- Изменения после первой версии схемы (для уже созданной таблицы):
+-- год выпуска — с 1930, количество дверей (необязательное)
+alter table public.listings drop constraint if exists listings_year_check;
+alter table public.listings add constraint listings_year_check check (year between 1930 and 2100);
+alter table public.listings add column if not exists doors int check (doors is null or doors between 1 and 9);
+
 create index if not exists listings_created_at on public.listings (created_at desc);
 create index if not exists listings_owner on public.listings (owner);
 
