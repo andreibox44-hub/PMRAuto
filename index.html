@@ -233,14 +233,6 @@ textarea { resize: vertical; min-height: 120px; }
   background: var(--overlay); color: #fff;
   font-size: .75rem; font-weight: 600; padding: 3px 8px; border-radius: 999px;
 }
-.example-badge {
-  position: absolute; left: 8px; top: 8px;
-  background: var(--surface); color: var(--text);
-  font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 6px; box-shadow: var(--shadow);
-}
-.example-badge.static { position: static; display: inline-block; margin-bottom: 6px; background: var(--surface-2); box-shadow: none; }
-.credit { margin: 0; font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
 .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .card-title { font-size: 1.05rem; font-weight: 700; overflow-wrap: anywhere; }
 .card-title small { display: block; font-size: .85rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
@@ -413,7 +405,6 @@ textarea { resize: vertical; min-height: 120px; }
 .features-list li::before { content: '✓'; color: var(--primary); font-weight: 700; margin-right: 8px; }
 /* Блок «Продавец» и страница продавца */
 .seller-block { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 16px 32px; align-items: start; }
-.seller-block-example { grid-template-columns: minmax(0, 420px); }
 .seller-info { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .seller-link { color: inherit; text-decoration: none; border-radius: 12px; }
 .seller-link:hover .seller-name { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
@@ -1088,7 +1079,6 @@ const fmtMonthYear = (ym) => (ym ? `${ym.slice(5, 7)}.${ym.slice(0, 4)}` : '');
 const MAX_PHOTOS = 10;
 const MAX_FILE_MB = 20;
 const CURRENT_YEAR = new Date().getFullYear();
-const EXAMPLE_OWNER = 'PMRAuto';
 
 /* ---------- Переводы ---------- */
 
@@ -1116,7 +1106,6 @@ const I18N = {
     'chat.ownListing': 'Это ваше объявление',
     'chat.openMessages': 'Открыть сообщения',
     'chat.ownChats': 'Диалогов по этой машине: {n}',
-    'chat.exampleNote': 'Это пример объявления, написать продавцу нельзя.',
     'chat.loginToWrite': 'Войдите, чтобы написать продавцу',
     'chat.cantSelf': 'Это ваше объявление: написать самому себе нельзя.',
     'chat.emptyTitle': 'Пока нет сообщений',
@@ -1247,6 +1236,8 @@ const I18N = {
     'results.newSearchBtn': 'Новый поиск',
     'results.filters': 'Фильтры',
     'results.emptyTitle': 'По вашему запросу ничего не найдено',
+    'listings.noneTitle': 'Пока нет объявлений',
+    'listings.noneText': 'Станьте первым: разместите объявление бесплатно за пару минут.',
     'results.emptyText': 'Попробуйте расширить диапазон цены или года, выбрать другую модель или сбросить фильтры.',
     'results.resetAll': 'Сбросить фильтры',
     'page.back': '← На главную',
@@ -1259,13 +1250,13 @@ const I18N = {
 
     'page.placeholder': 'Это текст-заглушка. Настоящее содержание страницы появится позже.',
     'page.about.title': 'О нас',
-    'page.about.body': 'PMRAuto — площадка для покупки и продажи автомобилей в Приднестровье и Молдове. Частные продавцы размещают здесь объявления, а покупатели находят подходящую машину и договариваются с продавцом напрямую.\n\nКроме легковых машин, на PMRAuto можно продать или найти мотоцикл, грузовик или фургон. В каталоге удобно искать по марке, модели, году, цене, пробегу, городу, топливу и коробке передач.\n\nРазместить объявление просто: зарегистрируйтесь, заполните форму и добавьте до 10 фото. Покупатели напишут вам во встроенный чат, а объявление можно в любой момент снять.\n\nОбъявления с пометкой «Пример» созданы для демонстрации: модели, характеристики и фото настоящие, а продавцы и истории машин придуманы.\n\nЕсть вопрос или идея? Нажмите «Задать вопрос» — мы ответим.',
+    'page.about.body': 'PMRAuto — площадка для покупки и продажи автомобилей в Приднестровье и Молдове. Частные продавцы размещают здесь объявления, а покупатели находят подходящую машину и договариваются с продавцом напрямую.\n\nКроме легковых машин, на PMRAuto можно продать или найти мотоцикл, грузовик или фургон. В каталоге удобно искать по марке, модели, году, цене, пробегу, городу, топливу и коробке передач.\n\nРазместить объявление просто: зарегистрируйтесь, заполните форму и добавьте до 10 фото. Покупатели напишут вам во встроенный чат, а объявление можно в любой момент снять.\n\nЕсть вопрос или идея? Нажмите «Задать вопрос» — мы ответим.',
     'page.contacts.title': 'Контакты',
     'page.contacts.body': 'У PMRAuto нет офиса и телефона для звонков.\n\nЕсть вопрос, нашли ошибку или хотите предложить идею? Напишите нам через форму «Задать вопрос»: кнопка ниже или в правом нижнем углу любой страницы. Мы ответим на e-mail, который вы укажете.',
     'page.privacy.title': 'Политика конфиденциальности',
     'page.privacy.body': 'Здесь простыми словами рассказано, какие данные использует сайт PMRAuto и где они хранятся.\n\nАккаунт, профиль, объявления, фото и переписка хранятся на сервере сервиса Supabase:\n• для входа: e-mail и пароль. Пароль хранится только в виде хеша, мы его не видим;\n• профиль: логин, имя, город, контактный e-mail или Telegram, аватар;\n• телефон из профиля. Его видите только вы, он подставляется в новые объявления;\n• ваши объявления и фото;\n• переписка с продавцами и покупателями.\n\nЧто видят другие посетители: ваши объявления (с телефоном, если вы указали его в объявлении), а также логин, имя, город, аватар, контактный e-mail и Telegram из профиля. Переписку видят только её участники. E-mail для входа и пароль никому не показываются.\n\nВ вашем браузере хранятся только данные входа (чтобы не вводить пароль каждый раз), выбранный язык, избранное и список сравнения.\n\nФорма «Задать вопрос»: имя, e-mail и текст сообщения отправляются нам через сервис Web3Forms. Мы используем их только для ответа.\n\nШрифт сайта загружается с Google Fonts. При этом ваш браузер обращается к серверам Google, и Google видит ваш IP-адрес.\n\nCookies, реклама и счётчики посещений не используются.\n\nЧтобы удалить свои данные, откройте «Личный кабинет» → «Безопасность» → «Удалить аккаунт». Аккаунт, профиль, объявления с фото и переписка будут удалены с сервера.',
     'page.terms.title': 'Условия использования',
-    'page.terms.body': 'Правила пользования сайтом PMRAuto.\n\nPMRAuto только показывает объявления и помогает покупателю связаться с продавцом. Сделки вы заключаете напрямую друг с другом: мы в них не участвуем и не проверяем машины и продавцов. Объявления с пометкой «Пример» созданы для демонстрации.\n\nПожалуйста:\n• размещайте только свои машины и правдивые данные;\n• не публикуйте чужие фото без разрешения;\n• не размещайте оскорбления, спам и незаконный контент.\n\nМы можем удалить объявления и аккаунты, которые нарушают эти правила.\n\nСайт предоставляется как есть, без гарантий. Перед покупкой проверяйте машину и документы сами.\n\nВопросы по правилам задавайте через форму «Задать вопрос».',
+    'page.terms.body': 'Правила пользования сайтом PMRAuto.\n\nPMRAuto только показывает объявления и помогает покупателю связаться с продавцом. Сделки вы заключаете напрямую друг с другом: мы в них не участвуем и не проверяем машины и продавцов.\n\nПожалуйста:\n• размещайте только свои машины и правдивые данные;\n• не публикуйте чужие фото без разрешения;\n• не размещайте оскорбления, спам и незаконный контент.\n\nМы можем удалить объявления и аккаунты, которые нарушают эти правила.\n\nСайт предоставляется как есть, без гарантий. Перед покупкой проверяйте машину и документы сами.\n\nВопросы по правилам задавайте через форму «Задать вопрос».',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме и не ведёт коммерческой деятельности.\n\nImpressum — страница с данными владельца сайта. Она будет заполнена, когда PMRAuto начнёт работать как настоящая площадка.\n\nСвязаться с нами можно через форму «Задать вопрос».',
     'page.cookies.title': 'Настройки cookies',
@@ -1273,7 +1264,6 @@ const I18N = {
 
     'nav.catalog': 'Каталог',
     'nav.my': 'Мои объявления',
-    'nav.sell': '+ Выставить машину',
     'nav.logout': 'Выйти',
     'nav.login': 'Войти',
     'nav.register': 'Регистрация',
@@ -1304,7 +1294,6 @@ const I18N = {
     'sort.yearDesc': 'Год: новее',
     'sort.kmAsc': 'Пробег: меньше',
 
-    'card.example': 'Пример',
     'card.open': 'Открыть',
     'card.delete': 'Удалить',
     'card.edit': 'Изменить',
@@ -1348,8 +1337,6 @@ const I18N = {
     'detail.mileage': 'Пробег',
     'detail.fuel': 'Топливо',
     'detail.gearbox': 'Коробка',
-    'detail.exampleBadge': 'Пример объявления',
-    'detail.exampleNote': 'Модель, характеристики и фото настоящие, продавец и история машины придуманы для демонстрации.',
     'detail.seller': 'Продавец',
     'detail.posted': 'Размещено {date}',
     'detail.photoBy': 'Фото',
@@ -1617,7 +1604,7 @@ const I18N = {
 
     'err.server': 'Ошибка сервера. Попробуйте ещё раз позже',
 
-    'err.load': 'Не удалось загрузить объявления с сервера. Показаны только примеры',
+    'err.load': 'Не удалось загрузить объявления с сервера. Обновите страницу',
 
     'app.loading': 'Загрузка…',
   },
@@ -1642,7 +1629,6 @@ const I18N = {
     'chat.ownListing': 'This is your listing',
     'chat.openMessages': 'Open messages',
     'chat.ownChats': 'Conversations about this car: {n}',
-    'chat.exampleNote': 'This is an example listing, so you can’t message the seller.',
     'chat.loginToWrite': 'Log in to message the seller',
     'chat.cantSelf': 'This is your listing: you can’t message yourself.',
     'chat.emptyTitle': 'No messages yet',
@@ -1773,6 +1759,8 @@ const I18N = {
     'results.newSearchBtn': 'New search',
     'results.filters': 'Filters',
     'results.emptyTitle': 'No listings match your search',
+    'listings.noneTitle': 'No listings yet',
+    'listings.noneText': 'Be the first: post a free listing in a couple of minutes.',
     'results.emptyText': 'Try widening the price or year range, picking another model, or resetting the filters.',
     'results.resetAll': 'Reset filters',
     'page.back': '← Back to home',
@@ -1785,13 +1773,13 @@ const I18N = {
 
     'page.placeholder': 'This is placeholder text. The real content will be added later.',
     'page.about.title': 'About us',
-    'page.about.body': 'PMRAuto is a marketplace for buying and selling cars in Transnistria and Moldova. Private sellers post listings here, and buyers find the right car and deal with the seller directly.\n\nBesides cars, you can sell or find a motorcycle, truck or van on PMRAuto. The catalogue lets you search by make, model, year, price, mileage, city, fuel type and gearbox.\n\nPosting a listing is easy: sign up, fill in the form and add up to 10 photos. Buyers can message you in the built-in chat, and you can remove your listing at any time.\n\nListings marked “Example” were made for demonstration: the models, specs and photos are real, but the sellers and the cars’ histories are made up.\n\nHave a question or an idea? Click “Ask a question” and we’ll get back to you.',
+    'page.about.body': 'PMRAuto is a marketplace for buying and selling cars in Transnistria and Moldova. Private sellers post listings here, and buyers find the right car and deal with the seller directly.\n\nBesides cars, you can sell or find a motorcycle, truck or van on PMRAuto. The catalogue lets you search by make, model, year, price, mileage, city, fuel type and gearbox.\n\nPosting a listing is easy: sign up, fill in the form and add up to 10 photos. Buyers can message you in the built-in chat, and you can remove your listing at any time.\n\nHave a question or an idea? Click “Ask a question” and we’ll get back to you.',
     'page.contacts.title': 'Contact',
     'page.contacts.body': 'PMRAuto has no office or phone line.\n\nHave a question, found a bug or want to suggest an idea? Write to us using the “Ask a question” form: the button below or in the bottom-right corner of any page. We’ll reply to the email you enter.',
     'page.privacy.title': 'Privacy policy',
     'page.privacy.body': 'This page explains in plain words what data PMRAuto uses and where it is stored.\n\nYour account, profile, listings, photos and messages are stored on a server run by the Supabase service:\n• for signing in: your email and password. The password is stored only as a hash, so we can’t see it;\n• your profile: username, name, city, contact email or Telegram, avatar;\n• the phone number in your profile. Only you can see it; it’s filled in on your new listings;\n• your listings and photos;\n• your messages with sellers and buyers.\n\nWhat other visitors can see: your listings (with the phone number, if you added it to the listing), plus the username, name, city, avatar, contact email and Telegram from your profile. Messages are visible only to the people in the conversation. Your sign-in email and password are never shown to anyone.\n\nYour browser stores only your sign-in session (so you don’t have to enter your password every time), your chosen language, your favourites and your comparison list.\n\nThe “Ask a question” form: your name, email and message are sent to us through the Web3Forms service. We use them only to reply.\n\nThe site’s font is loaded from Google Fonts. To do this your browser connects to Google’s servers, so Google sees your IP address.\n\nThe site uses no cookies, ads or visitor tracking.\n\nTo delete your data, open “My account” → “Security” → “Delete account”. Your account, profile, listings with photos and messages will be deleted from the server.',
     'page.terms.title': 'Terms of use',
-    'page.terms.body': 'The rules for using PMRAuto.\n\nPMRAuto only shows listings and helps buyers contact sellers. You make deals directly with each other: we take no part in them and don’t check the vehicles or the sellers. Listings marked “Example” were made for demonstration.\n\nPlease:\n• list only your own vehicles and give accurate details;\n• don’t post other people’s photos without permission;\n• don’t post insults, spam or illegal content.\n\nWe may remove listings and accounts that break these rules.\n\nThe site is provided as is, without any guarantees. Check the vehicle and its documents yourself before you buy.\n\nIf you have questions about these rules, use the “Ask a question” form.',
+    'page.terms.body': 'The rules for using PMRAuto.\n\nPMRAuto only shows listings and helps buyers contact sellers. You make deals directly with each other: we take no part in them and don’t check the vehicles or the sellers.\n\nPlease:\n• list only your own vehicles and give accurate details;\n• don’t post other people’s photos without permission;\n• don’t post insults, spam or illegal content.\n\nWe may remove listings and accounts that break these rules.\n\nThe site is provided as is, without any guarantees. Check the vehicle and its documents yourself before you buy.\n\nIf you have questions about these rules, use the “Ask a question” form.',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto is a demo project. The site is running in test mode and is not a commercial service.\n\nThe Impressum is the legal notice naming who runs the site. It will be completed once PMRAuto launches as a real marketplace.\n\nYou can contact us using the “Ask a question” form.',
     'page.cookies.title': 'Cookie settings',
@@ -1799,7 +1787,6 @@ const I18N = {
 
     'nav.catalog': 'Browse',
     'nav.my': 'My listings',
-    'nav.sell': '+ Sell your car',
     'nav.logout': 'Log out',
     'nav.login': 'Log in',
     'nav.register': 'Sign up',
@@ -1830,7 +1817,6 @@ const I18N = {
     'sort.yearDesc': 'Year: newest',
     'sort.kmAsc': 'Mileage: lowest',
 
-    'card.example': 'Example',
     'card.open': 'Open',
     'card.delete': 'Delete',
     'card.edit': 'Edit',
@@ -1874,8 +1860,6 @@ const I18N = {
     'detail.mileage': 'Mileage',
     'detail.fuel': 'Fuel',
     'detail.gearbox': 'Gearbox',
-    'detail.exampleBadge': 'Example listing',
-    'detail.exampleNote': 'The model, specs and photos are real; the seller and the car’s history are made up for the demo.',
     'detail.seller': 'Seller',
     'detail.posted': 'Listed on {date}',
     'detail.photoBy': 'Photo',
@@ -2143,7 +2127,7 @@ const I18N = {
 
     'err.server': 'Server error. Please try again later',
 
-    'err.load': 'Couldn’t load listings from the server. Showing examples only',
+    'err.load': 'Couldn’t load listings from the server. Please refresh the page',
 
     'app.loading': 'Loading…',
   },
@@ -2423,9 +2407,7 @@ async function refreshData(force = false) {
   return refreshing;
 }
 
-// Примеры объявлений живут в коде, а не в базе: их видят все, но написать по ним нельзя
-let EXAMPLES = [];
-const getListings = () => [...db.listings, ...EXAMPLES];
+const getListings = () => db.listings;
 const currentUser = () => db.me?.username || null;
 const getUser = (username) => db.users.get(username) || null;
 
@@ -2494,193 +2476,10 @@ function carSvg(paint) {
 
 const NO_PHOTO = carSvg('#c3cad6');
 
-/* Фото примеров лежат отдельными файлами в папке img/ и указываются путями (img/...).
+/* Фото баннера лежит отдельным файлом в папке img/ и указывается путём (img/...).
    window.EMBEDDED_PHOTOS — запасной вариант, если страницу соберут в один файл с картинками внутри. */
 const EMBEDDED_PHOTOS = window.EMBEDDED_PHOTOS || {};
 const photoSrc = (p) => EMBEDDED_PHOTOS[p] || p;
-
-/* Примеры объявлений. Модели, характеристики и фотографии настоящие
-   (фото — Wikimedia Commons, авторы и лицензии указаны в credit),
-   а продавцы и истории машин придуманы для демонстрации. */
-const SEED = [
-  {
-    vehicle: 'car',
-    brand: 'BMW', model: '320d Touring M Sport', year: 2020, mileage: 112000, price: 22900,
-    fuel: 'diesel', transmission: 'automatic', power: 190, body: 'wagon',
-    color: { ru: 'Белый (Alpine White)', en: 'White (Alpine White)' },
-    city: { ru: 'Тирасполь', en: 'Tiraspol' },
-    photos: ['img/bmw-1.jpg', 'img/bmw-2.jpg'],
-    credit: { author: 'Damian B Oh', license: 'CC BY-SA 4.0', url: 'https://commons.wikimedia.org/wiki/File:BMW_G21_320d_Touring_M_Sport_Alpine_White_(2).jpg' },
-    description: {
-      ru: `Универсал 3-й серии поколения G21, дизель 2.0 (190 л.с.) и 8-ступенчатый автомат Steptronic. Первая регистрация — март 2020 года.
-
-До 2023 года машина была служебной у инженерного бюро в Мюнхене и обслуживалась строго по сервисному интервалу у официального дилера BMW. В 2023 году её пригнали из Германии в Тирасполь, с тех пор один владелец в ПМР. Ездил в основном по трассе Тирасполь — Кишинёв, отсюда пробег.
-
-Что делалось:
-• Масло и фильтры — каждые 25 000 км, последний раз в июне 2026 года на 108 400 км
-• 2023 — замена лобового стекла после удара камнем (по страховке)
-• 2024 — новые летние шины Michelin Pilot Sport 4, передние тормозные диски и колодки
-• Растаможена, стоит на учёте в ПМР, техосмотр пройден в сентябре 2026 года
-
-Без ДТП. Пакет M Sport: спортивная подвеска, цифровая приборная панель Live Cockpit Professional, LED-фары, электропривод багажника, фаркоп. Два ключа, вся сервисная история видна в приложении My BMW.`,
-      en: `A G21-generation 3 Series Touring with the 2.0 diesel (190 hp) and the 8-speed Steptronic automatic. First registered in March 2020.
-
-Until 2023 it was the company car of an engineering firm in Munich and was serviced strictly on schedule at an official BMW dealer. In 2023 it was imported from Germany to Tiraspol and has had one owner in Transnistria since, who drove mostly on the Tiraspol–Chișinău road, hence the mileage.
-
-Work done:
-• Oil and filters every 25,000 km, most recently in June 2026 at 108,400 km
-• 2023: windscreen replaced after a stone chip (covered by insurance)
-• 2024: new Michelin Pilot Sport 4 summer tyres, front brake discs and pads
-• Customs cleared and registered in Transnistria, inspection passed in September 2026
-
-Accident-free. M Sport package: sport suspension, Live Cockpit Professional digital instruments, LED headlights, powered tailgate, tow bar. Two keys, full service history in the My BMW app.`,
-    },
-  },
-  {
-    vehicle: 'car',
-    brand: 'Volkswagen', model: 'Golf 1.5 eTSI', year: 2021, mileage: 46500, price: 19400,
-    fuel: 'petrol', transmission: 'automatic', power: 150, body: 'hatchback',
-    color: { ru: 'Серебристый металлик', en: 'Silver metallic' },
-    city: { ru: 'Бендеры', en: 'Bendery' },
-    photos: ['img/golf-1.jpg', 'img/golf-2.jpg'],
-    credit: { author: 'Charles from Port Chester, New York', license: 'CC BY 2.0', url: 'https://commons.wikimedia.org/wiki/File:Volkswagen_Golf_VIII_1.5_eTSI_(2021)_(52926136720).jpg' },
-    description: {
-      ru: `Golf восьмого поколения: 1.5 eTSI с мягким гибридом на 48 В и роботом DSG. Тихий и экономичный, в городе расходует 5,5–6 л на 100 км.
-
-До 2025 года у одной владелицы, пенсионерки из Гамбурга: машина стояла в подземном гараже и ездила в основном по городу. В 2025 году пригнана в Бендеры, растаможена и стоит на учёте в ПМР. В салоне не курили, животных не возили.
-
-История:
-• Все ТО до продажи — у официального дилера Volkswagen в Германии, электронная сервисная книжка
-• 2022 — обновление программного обеспечения мультимедиа по сервисной кампании
-• 2025 — замена салонного фильтра, щёток и аккумулятора 12 В
-• Небольшой скол краски на капоте, остальной кузов в заводской краске (проверено толщиномером)
-
-В комплекте зимние шины на стальных дисках.`,
-      en: `Eighth-generation Golf: 1.5 eTSI with a 48 V mild-hybrid system and DSG automatic. Quiet and economical, using 5.5–6 l/100 km in town.
-
-Until 2025 it had one owner, a retiree from Hamburg: the car lived in an underground garage and was used mostly around town. In 2025 it was brought to Bendery, customs cleared and registered in Transnistria. Non-smoker, no pets.
-
-History:
-• All services before the sale at an official Volkswagen dealer in Germany, digital service record
-• 2022: infotainment software update as part of a service campaign
-• 2025: new cabin filter, wiper blades and 12 V battery
-• Small paint chip on the bonnet; the rest of the body is in its original paint (checked with a paint gauge)
-
-Comes with winter tyres on steel wheels.`,
-    },
-  },
-  {
-    vehicle: 'car',
-    brand: 'Tesla', model: 'Model 3 Long Range Dual Motor', year: 2019, mileage: 98000, price: 21900,
-    fuel: 'electric', transmission: 'automatic', power: 440, body: 'sedan',
-    color: { ru: 'Красный (Red Multi-Coat)', en: 'Red (Red Multi-Coat)' },
-    city: { ru: 'Рыбница', en: 'Rybnitsa' },
-    photos: ['img/tesla-1.jpg'],
-    credit: { author: 'Elise240SX', license: 'CC BY-SA 4.0', url: 'https://commons.wikimedia.org/wiki/File:2019_Tesla_Model_3_Long_Range_Dual_Motor_in_Red_Multi-Coat,_front_left,_2021-05-30.jpg' },
-    description: {
-      ru: `Long Range с двумя моторами и полным приводом, одна из первых партий Model 3, пришедших в Европу весной 2019 года. Красный Red Multi-Coat, белый салон. С 2022 года в Рыбнице: пригнана из Германии, растаможена, на учёте в ПМР.
-
-Батарея: по данным сервис-центра Tesla после 98 000 км сохраняет около 90% исходной ёмкости. Летом машина реально проезжает 430–450 км на одной зарядке. Гарантия на батарею и моторы — 8 лет или 192 000 км, то есть до весны 2027 года.
-
-История:
-• 2021 — по гарантии заменены верхние рычаги передней подвески (скрип, типичный для ранних Model 3)
-• Компьютер автопилота HW3, купленная опция Enhanced Autopilot остаётся с машиной
-• Заряжалась в основном дома от настенной станции на 11 кВт, быстрые зарядки — только в поездках
-• Теплового насоса нет (его стали ставить в 2021 году), поэтому зимой расход заметно выше
-
-Зимние колёса 18" в комплекте.`,
-      en: `Long Range with two motors and all-wheel drive, from one of the first Model 3 batches delivered to Europe in spring 2019. Red Multi-Coat with a white interior. In Rybnitsa since 2022: imported from Germany, customs cleared and registered in Transnistria.
-
-Battery: according to the Tesla Service Center it keeps about 90% of its original capacity after 98,000 km. Real-world summer range is 430–450 km per charge. The battery and drive unit warranty runs for 8 years or 192,000 km, i.e. until spring 2027.
-
-History:
-• 2021: front upper control arms replaced under warranty (a creak typical of early Model 3s)
-• HW3 Autopilot computer; the purchased Enhanced Autopilot option stays with the car
-• Charged mostly at home on an 11 kW wall box, fast charging only on trips
-• No heat pump (Tesla added it in 2021), so winter consumption is noticeably higher
-
-18" winter wheels included.`,
-    },
-  },
-  {
-    vehicle: 'car',
-    brand: 'Toyota', model: 'RAV4 2.5 Hybrid AWD-i', year: 2019, mileage: 83000, price: 27900,
-    fuel: 'hybrid', transmission: 'automatic', power: 222, body: 'suv',
-    color: { ru: 'Белый перламутр', en: 'Pearl white' },
-    city: { ru: 'Дубоссары', en: 'Dubossary' },
-    photos: ['img/rav4-1.jpg', 'img/rav4-2.jpg', 'img/rav4-3.jpg'],
-    credit: { author: 'Alexander Migl', license: 'CC BY-SA 4.0', url: 'https://commons.wikimedia.org/wiki/File:2019_Toyota_RAV4_Hybrid_01.jpg' },
-    description: {
-      ru: `RAV4 пятого поколения (XA50), 2.5 Hybrid с полным приводом AWD-i. Суммарно 222 л.с., может буксировать прицеп массой до 1650 кг.
-
-Семейная машина: один владелец с 2019 года — купил её новой в Германии и в 2021 году перевёз в Дубоссары, где она стоит на учёте в ПМР. Двое детей, дача, каждое лето поездки на море. Поэтому установлен фаркоп и есть рейлинги, багажный бокс можно забрать по договорённости.
-
-Обслуживание:
-• ТО каждый год по регламенту, все заказ-наряды сохранены
-• 2025 — проверка гибридной системы: высоковольтная батарея в норме
-• 2024 — замена тормозной жидкости и антифриза по регламенту
-• Фото моторного отсека сделано перед продажей: подтёков нет
-
-Средний расход в смешанном цикле — 6,2 л на 100 км. Без ДТП, два ключа.`,
-      en: `Fifth-generation RAV4 (XA50), 2.5 Hybrid with AWD-i all-wheel drive. 222 hp combined, rated to tow up to 1,650 kg.
-
-A family car: one owner since 2019, who bought it new in Germany and moved it to Dubossary in 2021, where it is registered in Transnistria. Two kids, a country house, a trip to the seaside every summer. That’s why it has a tow bar and roof rails; the roof box can be included by arrangement.
-
-Maintenance:
-• Serviced every year on schedule, all invoices kept
-• 2025: hybrid system check, high-voltage battery in good health
-• 2024: brake fluid and coolant replaced on schedule
-• The engine bay photo was taken before the sale: no leaks
-
-Average combined consumption is 6.2 l/100 km. Accident-free, two keys.`,
-    },
-  },
-  {
-    vehicle: 'car',
-    brand: 'Mercedes-Benz', model: 'C 200 4MATIC Avantgarde', year: 2019, mileage: 87000, price: 24900,
-    fuel: 'petrol', transmission: 'automatic', power: 184, body: 'sedan',
-    color: { ru: 'Чёрный обсидиан', en: 'Obsidian black' },
-    city: { ru: 'Слободзея', en: 'Slobodzeya' },
-    photos: ['img/merc-1.jpg', 'img/merc-2.jpg'],
-    credit: { author: 'Tokumeigakarinoaoshima', license: 'CC BY-SA 4.0', url: 'https://commons.wikimedia.org/wiki/File:Mercedes-Benz_C_200_4MATIC_AVANTGARDE_(W205)_front.jpg' },
-    description: {
-      ru: `C-класс W205 после рестайлинга: турбомотор 1.5 с системой EQ Boost (стартер-генератор на 48 В), 9-ступенчатый автомат 9G-Tronic и полный привод 4MATIC.
-
-Это «годовалая» машина сотрудника (Jahreswagen): первый год она принадлежала работнику завода Mercedes-Benz в Бремене, где собирают C-класс. С 2020 года у второго владельца в Германии, в 2024 году пригнана в Слободзею и поставлена на учёт в ПМР.
-
-История:
-• ТО (Service A/B) до 2024 года у официального дилера Mercedes-Benz, после — в независимом сервисе в Тирасполе
-• 2022 — по гарантии заменена 48-вольтовая батарея системы EQ Boost
-• 2025 — новые передние тормозные диски и колодки, замена масла в коробке передач
-• LED-фары, подогрев сидений, камера заднего вида, Apple CarPlay и Android Auto
-
-Без ДТП. Комплект зимних колёс на литых дисках.`,
-      en: `Facelifted W205 C-Class: 1.5 turbo engine with EQ Boost (48 V starter-generator), 9G-Tronic 9-speed automatic and 4MATIC all-wheel drive.
-
-This is a Jahreswagen, a one-year-old employee car: for its first year it belonged to a worker at the Mercedes-Benz plant in Bremen, where the C-Class is built. Second owner in Germany from 2020; in 2024 it was brought to Slobodzeya and registered in Transnistria.
-
-History:
-• Services (Service A/B) at an official Mercedes-Benz dealer until 2024, then at an independent garage in Tiraspol
-• 2022: 48 V EQ Boost battery replaced under warranty
-• 2025: new front brake discs and pads, gearbox oil change
-• LED headlights, heated seats, reversing camera, Apple CarPlay and Android Auto
-
-Accident-free. Includes a set of winter wheels on alloy rims.`,
-    },
-  },
-];
-
-function buildExamples() {
-  const now = Date.now();
-  EXAMPLES = SEED.map((car, i) => ({
-    id: `example-${i + 1}`,
-    owner: EXAMPLE_OWNER,
-    example: true,
-    phone: '',
-    createdAt: now - (i + 1) * 86400000,
-    ...car,
-  }));
-}
 
 /* ---------- Аутентификация (Supabase Auth) ----------
    Вход по e-mail и паролю; пароли хранит и проверяет сервер.
@@ -2980,7 +2779,6 @@ function renderNav(route) {
        <a href="#" data-go="account" data-param="messages" id="nav-messages" class="nav-link nav-messages${active('messages')}" aria-label="${t('nav.messages')}">
          ${CHAT_ICON}<span class="nav-messages-label">${t('nav.messages')}</span><span class="badge" data-unread hidden></span>
        </a>
-       <a href="#" data-go="sell" class="btn btn-primary">${t('nav.sell')}</a>
        <a href="#" data-go="account" class="user-chip${active('account')}" title="${t('account.title')}">
          ${avatarHtml(user, 30)}<b class="user-label">${esc(displayName(user))}</b>
        </a>
@@ -3459,7 +3257,6 @@ function cardHtml(car, { owner = false } = {}) {
       <div class="card-media">
         <img src="${photo}" alt="${esc(car.brand)} ${esc(car.model)}" loading="lazy">
         ${count > 1 ? `<span class="photo-count">📷 ${count}</span>` : ''}
-        ${car.example ? `<span class="example-badge">${t('card.example')}</span>` : ''}
       </div>
       <div class="card-body">
         <h3 class="card-title">${esc(car.brand)} ${esc(car.model)}${city ? `<small>📍 ${esc(city)}</small>` : ''}</h3>
@@ -3672,6 +3469,15 @@ const HERO_PHOTO = 'img/hero.jpg';
 const HERO_TONE = 'light';
 const HERO_CREDIT = null;
 
+// На сайте ещё нет ни одного объявления — на главной и в поиске
+function noListingsHtml() {
+  return `<div class="empty">
+    <h3>${t('listings.noneTitle')}</h3>
+    <p>${t('listings.noneText')}</p>
+    <div class="empty-actions"><a href="#" data-go="sell" class="btn btn-primary">${t('home.heroSell')}</a></div>
+  </div>`;
+}
+
 function viewHome() {
   if (!filters.vehicle) filters.vehicle = 'car'; // на главной всегда выбран один вид транспорта
   normalizeFilters();
@@ -3723,11 +3529,10 @@ function viewHome() {
         <section class="home-section" aria-labelledby="new-title">
           <div class="section-head">
             <h2 id="new-title">${t('home.newTitle')}</h2>
-            <a href="#" data-go="catalog">${t('home.seeAll')} →</a>
+            ${listings.length ? `<a href="#" data-go="catalog">${t('home.seeAll')} →</a>` : ''}
           </div>
           <div class="grid">
-            ${latest.length ? latest.map((car) => cardHtml(car)).join('')
-              : `<div class="empty"><h3>${t('my.none')}</h3></div>`}
+            ${latest.length ? latest.map((car) => cardHtml(car)).join('') : noListingsHtml()}
           </div>
         </section>
       </div>
@@ -3850,6 +3655,7 @@ function renderResults() {
   $('#filters-toggle').textContent = `${t('results.filters')}${active ? ` (${active})` : ''}`;
   $('#results-grid').innerHTML = list.length
     ? list.map((car) => cardHtml(car)).join('')
+    : !getListings().length ? noListingsHtml()
     : `<div class="empty">
         <h3>${t('results.emptyTitle')}</h3>
         <p>${t('results.emptyText')}</p>
@@ -3939,11 +3745,7 @@ function viewDetail(id) {
           <div class="key-fact"><span>${t('detail.fuel')}</span><b>${esc(tv('fuel', car.fuel))}</b></div>
           <div class="key-fact"><span>${t('detail.gearbox')}</span><b>${esc(tv('transmission', car.transmission) || '—')}</b></div>
         </div>
-        ${car.example
-          ? `<p class="seller"><span class="example-badge static">${t('detail.exampleBadge')}</span><br>${t('detail.exampleNote')}</p>`
-          : `<p class="seller-posted">${t('detail.posted', { date: fmtDate(car.createdAt) })}</p>`}
-        ${car.credit ? `<p class="credit">${t('detail.photoBy')}: ${esc(car.credit.author)}, ${esc(car.credit.license)} ·
-          <a href="${esc(car.credit.url)}" target="_blank" rel="noopener">Wikimedia Commons</a></p>` : ''}
+        <p class="seller-posted">${t('detail.posted', { date: fmtDate(car.createdAt) })}</p>
         ${isOwner ? `<div class="owner-actions">
           <a href="#" class="btn btn-ghost btn-block" data-go="sell" data-param="${esc(car.id)}">${t('detail.edit')}</a>
           <button type="button" class="btn btn-danger btn-block" id="delete-btn">${t('detail.delete')}</button>
@@ -4186,10 +3988,6 @@ async function startChat(listingId) {
 
 // Блок под фото на странице объявления
 function contactSellerHtml(car) {
-  if (car.example) {
-    return `<button type="button" class="btn btn-primary btn-lg btn-block" disabled>${CHAT_ICON}<span>${t('chat.write')}</span></button>
-      <p class="contact-note">${t('chat.exampleNote')}</p>`;
-  }
   if (car.owner === currentUser()) {
     return `<div class="contact-own">
       <span>${t('chat.ownListing')}</span>
@@ -4592,7 +4390,7 @@ function renderListingsTab(user) {
         <h2 class="account-title">${t('my.title')}</h2>
         <p>${mine.length ? `${mine.length} ${plural('plural.listings', mine.length)}` : t('my.none')}</p>
       </div>
-      <a href="#" data-go="sell" class="btn btn-primary">${t('nav.sell')}</a>
+      <a href="#" data-go="sell" class="btn btn-primary">${t('my.sell')}</a>
     </div>
     <div class="grid account-grid" id="my-grid">
       ${mine.length ? mine.map((car) => cardHtml(car, { owner: true })).join('')
@@ -4687,33 +4485,30 @@ function renderSecurityTab(user) {
 /* Блок «Продавец» внизу объявления: имя и аватар со ссылкой на профиль, город, контакты,
    телефон по кнопке «Показать номер» и «Написать продавцу» */
 function sellerSectionHtml(car) {
-  let info = '';
-  if (!car.example) {
-    const account = getUser(car.owner);
-    const p = account?.profile || {};
-    const city = cityLabel(cityKey(car)) || (p.city ? cityLabel(cityKey({ city: p.city })) : '');
-    const rows = [
-      city && `<li><span>${t('spec.city')}</span><b>${esc(city)}</b></li>`,
-      account && `<li><span>${t('seller.since')}</span><b>${fmtDate(account.createdAt)}</b></li>`,
-      p.email && `<li><span>${t('profile.email')}</span><b>${esc(p.email)}</b></li>`,
-      p.telegram && `<li><span>Telegram</span><b>@${esc(p.telegram)}</b></li>`,
-      car.phone && `<li class="seller-phone"><span>${t('detail.phone')}</span>
-        <span class="phone-reveal" id="phone-reveal"><button type="button" class="btn btn-ghost btn-sm" id="show-phone">${t('seller.showPhone')}</button></span></li>`,
-    ].filter(Boolean).join('');
-    const head = `${avatarHtml(car.owner, 56)}
-      <span class="seller-head-text">
-        <b class="seller-name">${esc(displayName(car.owner))}</b>
-        ${account ? `<span class="seller-meta">@${esc(car.owner)} · ${t('seller.profile')} →</span>` : ''}
-      </span>`;
-    info = `<div class="seller-info">
-      ${account ? `<a href="#" class="seller-head seller-link" data-go="user" data-param="${esc(car.owner)}">${head}</a>`
-        : `<div class="seller-head">${head}</div>`}
-      ${rows ? `<ul class="seller-contacts">${rows}</ul>` : ''}
-    </div>`;
-  }
+  const account = getUser(car.owner);
+  const p = account?.profile || {};
+  const city = cityLabel(cityKey(car)) || (p.city ? cityLabel(cityKey({ city: p.city })) : '');
+  const rows = [
+    city && `<li><span>${t('spec.city')}</span><b>${esc(city)}</b></li>`,
+    account && `<li><span>${t('seller.since')}</span><b>${fmtDate(account.createdAt)}</b></li>`,
+    p.email && `<li><span>${t('profile.email')}</span><b>${esc(p.email)}</b></li>`,
+    p.telegram && `<li><span>Telegram</span><b>@${esc(p.telegram)}</b></li>`,
+    car.phone && `<li class="seller-phone"><span>${t('detail.phone')}</span>
+      <span class="phone-reveal" id="phone-reveal"><button type="button" class="btn btn-ghost btn-sm" id="show-phone">${t('seller.showPhone')}</button></span></li>`,
+  ].filter(Boolean).join('');
+  const head = `${avatarHtml(car.owner, 56)}
+    <span class="seller-head-text">
+      <b class="seller-name">${esc(displayName(car.owner))}</b>
+      ${account ? `<span class="seller-meta">@${esc(car.owner)} · ${t('seller.profile')} →</span>` : ''}
+    </span>`;
+  const info = `<div class="seller-info">
+    ${account ? `<a href="#" class="seller-head seller-link" data-go="user" data-param="${esc(car.owner)}">${head}</a>`
+      : `<div class="seller-head">${head}</div>`}
+    ${rows ? `<ul class="seller-contacts">${rows}</ul>` : ''}
+  </div>`;
   return `<section class="panel section seller-section" aria-labelledby="seller-title">
     <h2 id="seller-title">${t('detail.seller')}</h2>
-    <div class="seller-block${car.example ? ' seller-block-example' : ''}">
+    <div class="seller-block">
       ${info}
       <div class="contact-seller">${contactSellerHtml(car)}</div>
     </div>
@@ -5961,7 +5756,6 @@ function onRateChanged() {
 
 async function boot() {
   try { OLD_KEYS.forEach((k) => localStorage.removeItem(k)); } catch { /* хранилище недоступно */ }
-  buildExamples();
   // Открываем ту страницу, что в адресе (после обновления или по присланной ссылке)
   currentRoute = hashToRoute(location.hash);
   applyStaticText();
