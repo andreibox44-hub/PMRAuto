@@ -249,6 +249,7 @@ textarea { resize: vertical; min-height: 120px; }
 .meta { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0; margin: 0; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .card-actions { display: flex; gap: 8px; padding: 0 16px 16px; }
 .card-actions .btn { flex: 1; }
+.owner-actions { display: grid; gap: 8px; }
 
 .chip { display: inline-block; font-size: .78rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--fuel-diesel-bg); color: var(--fuel-diesel-fg); }
 .chip-petrol { background: var(--fuel-petrol-bg); color: var(--fuel-petrol-fg); }
@@ -1239,6 +1240,7 @@ const I18N = {
     'card.example': 'Пример',
     'card.open': 'Открыть',
     'card.delete': 'Удалить',
+    'card.edit': 'Изменить',
     'nav.favorites': 'Избранное',
     'nav.compare': 'Сравнение',
     'fav.add': 'Добавить в избранное',
@@ -1287,6 +1289,7 @@ const I18N = {
     'detail.phone': 'Телефон продавца',
     'detail.copy': 'Копировать',
     'detail.delete': '🗑 Удалить объявление',
+    'detail.edit': '✏️ Редактировать объявление',
     'detail.specs': 'Характеристики',
     'detail.description': 'Описание',
     'detail.phoneCopied': 'Номер скопирован',
@@ -1334,6 +1337,7 @@ const I18N = {
     'my.sell': 'Выставить машину',
 
     'sell.title': 'Выставить машину на продажу',
+    'sell.editTitle': 'Редактирование объявления',
     'sell.required': 'Поля со звёздочкой обязательны',
     'sell.basics': 'Основное',
     'sell.brand': 'Марка',
@@ -1362,11 +1366,14 @@ const I18N = {
     'sell.photoHint': 'Фото автоматически уменьшаются до 1280 px. Нажмите на фото, чтобы сделать его обложкой.',
     'sell.cancel': 'Отмена',
     'sell.submit': 'Опубликовать объявление',
+    'sell.save': 'Сохранить изменения',
     'sell.processing': 'Подождите, фотографии ещё обрабатываются…',
     'sell.check': 'Проверьте поля: {fields}.',    'sell.saveFailed': 'Не удалось сохранить объявление.',
     'sell.uploading': 'Загружаем фото: {n} из {total}…',
     'sell.publishing': 'Публикуем…',
     'sell.published': 'Объявление опубликовано',
+    'sell.saved': 'Изменения сохранены',
+    'sell.notYours': 'Это объявление нельзя редактировать: оно не ваше или уже удалено.',
     'field.brand': 'марку',
     'field.model': 'модель',
     'field.year': 'год ({range})',
@@ -1653,6 +1660,7 @@ const I18N = {
     'card.example': 'Example',
     'card.open': 'Open',
     'card.delete': 'Delete',
+    'card.edit': 'Edit',
     'nav.favorites': 'Saved',
     'nav.compare': 'Compare',
     'fav.add': 'Save',
@@ -1701,6 +1709,7 @@ const I18N = {
     'detail.phone': 'Seller’s phone',
     'detail.copy': 'Copy',
     'detail.delete': '🗑 Delete listing',
+    'detail.edit': '✏️ Edit listing',
     'detail.specs': 'Specifications',
     'detail.description': 'Description',
     'detail.phoneCopied': 'Number copied',
@@ -1748,6 +1757,7 @@ const I18N = {
     'my.sell': 'Sell your car',
 
     'sell.title': 'Sell your car',
+    'sell.editTitle': 'Edit listing',
     'sell.required': 'Fields marked with an asterisk are required',
     'sell.basics': 'Basics',
     'sell.brand': 'Make',
@@ -1776,11 +1786,14 @@ const I18N = {
     'sell.photoHint': 'Photos are resized to 1280 px. Click a photo to make it the cover.',
     'sell.cancel': 'Cancel',
     'sell.submit': 'Publish listing',
+    'sell.save': 'Save changes',
     'sell.processing': 'Please wait, photos are still being processed…',
     'sell.check': 'Please check: {fields}.',    'sell.saveFailed': 'Couldn’t save the listing.',
     'sell.uploading': 'Uploading photos: {n} of {total}…',
     'sell.publishing': 'Publishing…',
     'sell.published': 'Listing published',
+    'sell.saved': 'Changes saved',
+    'sell.notYours': 'You can’t edit this listing: it isn’t yours or has been removed.',
     'field.brand': 'make',
     'field.model': 'model',
     'field.year': 'year ({range})',
@@ -2991,6 +3004,7 @@ function cardHtml(car, { owner = false } = {}) {
     ${owner ? '' : `<div class="card-tools">${cardToolsHtml(car.id)}</div>`}
     ${owner ? `<div class="card-actions">
       <a class="btn btn-ghost btn-sm" href="#" data-go="car" data-param="${esc(car.id)}">${t('card.open')}</a>
+      <a class="btn btn-ghost btn-sm" href="#" data-go="sell" data-param="${esc(car.id)}">${t('card.edit')}</a>
       <button type="button" class="btn btn-danger btn-sm" data-delete="${esc(car.id)}">${t('card.delete')}</button>
     </div>` : ''}
   </article>`;
@@ -3436,7 +3450,10 @@ function viewDetail(id) {
           <div><span>${t('detail.phone')}</span><b id="phone-num">${esc(car.phone)}</b></div>
           <button type="button" class="btn btn-ghost btn-sm" id="copy-phone">${t('detail.copy')}</button>
         </div>` : ''}
-        ${isOwner ? `<button type="button" class="btn btn-danger btn-block" id="delete-btn">${t('detail.delete')}</button>` : ''}
+        ${isOwner ? `<div class="owner-actions">
+          <a href="#" class="btn btn-ghost btn-block" data-go="sell" data-param="${esc(car.id)}">${t('detail.edit')}</a>
+          <button type="button" class="btn btn-danger btn-block" id="delete-btn">${t('detail.delete')}</button>
+        </div>` : ''}
       </aside>
     </div>
 
@@ -4206,17 +4223,51 @@ function sellerCardHtml(car) {
 
 /* ---------- Выставить машину ---------- */
 
+/* Одна форма для нового объявления и для редактирования (маршрут sell с id объявления).
+   В pendingPhotos лежат ссылки на уже загруженные фото и data:-картинки новых. */
 let pendingPhotos = [];
 let processingCount = 0;
+let editingId = null;
 
-function viewSell() {
+function viewSell(id = null) {
   if (!currentUser()) return requireLogin('sell');
-  pendingPhotos = [];
   processingCount = 0;
+  if (id) {
+    const car = db.listings.find((l) => l.id === id);
+    if (!car || car.owner !== currentUser()) {
+      editingId = null;
+      app.innerHTML = `<div class="empty"><h3>${t('detail.notFound')}</h3><p>${t('sell.notYours')}</p>
+        <p><a href="#" data-go="account" data-param="listings" class="btn btn-primary">${t('my.title')}</a></p></div>`;
+      return;
+    }
+    editingId = id;
+    pendingPhotos = [...car.photos];
+    renderSellForm();
+    fillSellForm(car);
+    renderPreviews();
+    return;
+  }
+  editingId = null;
+  pendingPhotos = [];
   renderSellForm();
   const p = profileOf(currentUser());
   if (p.city) $('#s-city').value = p.city;
   if (p.phone) $('#s-phone').value = p.phone;
+}
+
+// Заполняет форму данными объявления
+function fillSellForm(car) {
+  const form = $('#sell-form');
+  const values = {
+    vehicle: vehicleOf(car), brand: car.brand, model: car.model, year: car.year, mileage: car.mileage,
+    price: car.price, fuel: code(car.fuel), transmission: code(car.transmission) || '', power: car.power || '',
+    body: code(car.body) || '', color: loc(car.color), city: loc(car.city), phone: car.phone || '',
+    description: loc(car.description),
+  };
+  for (const [name, value] of Object.entries(values)) {
+    if (form.elements[name]) form.elements[name].value = value;
+  }
+  $('#brand-list').innerHTML = brandListOptions(values.vehicle);
 }
 
 function renderSellForm() {
@@ -4224,7 +4275,7 @@ function renderSellForm() {
   app.innerHTML = `
     <div class="page-head">
       <div>
-        <h1>${t('sell.title')}</h1>
+        <h1>${t(editingId ? 'sell.editTitle' : 'sell.title')}</h1>
         <p>${t('sell.required')}</p>
       </div>
     </div>
@@ -4312,8 +4363,10 @@ function renderSellForm() {
 
       <p class="form-error" id="sell-error"></p>
       <div class="form-actions">
-        <a href="#" data-go="home" class="btn btn-ghost">${t('sell.cancel')}</a>
-        <button type="submit" class="btn btn-primary" id="sell-submit">${t('sell.submit')}</button>
+        ${editingId
+          ? `<a href="#" data-go="car" data-param="${esc(editingId)}" class="btn btn-ghost">${t('sell.cancel')}</a>`
+          : `<a href="#" data-go="home" class="btn btn-ghost">${t('sell.cancel')}</a>`}
+        <button type="submit" class="btn btn-primary" id="sell-submit">${t(editingId ? 'sell.save' : 'sell.submit')}</button>
       </div>
     </form>`;
 
@@ -4459,9 +4512,9 @@ async function onSellSubmit(e) {
   }
 
   if (!db.me) return requireLogin('sell');
-  const id = newId();
+  const editing = editingId ? db.listings.find((l) => l.id === editingId) : null;
+  const id = editing ? editing.id : newId();
   const row = {
-    id,
     brand: brandKey(trimmed('brand')),
     model: trimmed('model'),
     year,
@@ -4478,34 +4531,52 @@ async function onSellSubmit(e) {
     description: trimmed('description'),
   };
 
-  // Сначала загружаем фото в Storage, потом сохраняем объявление со ссылками на них
+  // Сначала загружаем новые фото в Storage, потом сохраняем объявление со ссылками на них.
+  // Уже загруженные фото (при редактировании) остаются как есть
   const submitBtn = $('#sell-submit');
   const status = (text) => { if (submitBtn) submitBtn.textContent = text; };
-  const photos = [...pendingPhotos];
+  const isNew = (src) => src.startsWith('data:');
+  const total = pendingPhotos.filter(isNew).length;
+  const photos = [];
   const uploaded = [];
+  const batch = Date.now().toString(36); // своё имя у каждой загрузки, чтобы не задеть старые файлы
   publishing = true;
   submitBtn.disabled = true;
   errorEl.textContent = '';
   try {
-    for (const [i, src] of photos.entries()) {
-      status(t('sell.uploading', { n: i + 1, total: photos.length }));
-      uploaded.push(await uploadPhoto(`${db.me.id}/${id}/${i + 1}.jpg`, src));
+    for (const [i, src] of pendingPhotos.entries()) {
+      if (!isNew(src)) {
+        photos.push(src);
+        continue;
+      }
+      status(t('sell.uploading', { n: uploaded.length + 1, total }));
+      const url = await uploadPhoto(`${db.me.id}/${id}/${batch}-${i + 1}.jpg`, src);
+      uploaded.push(url);
+      photos.push(url);
     }
     status(t('sell.publishing'));
-    const saved = must(await sb.from('listings').insert({ ...row, photos: uploaded }).select().single());
-    db.listings.unshift(listingFromRow(saved));
+    if (editing) {
+      const saved = listingFromRow(must(await sb.from('listings').update({ ...row, photos }).eq('id', id).select().single()));
+      db.listings = db.listings.map((l) => (l.id === id ? saved : l));
+      removePhotos(editing.photos.filter((p) => !photos.includes(p))); // фото, которые убрали из объявления
+    } else {
+      const saved = must(await sb.from('listings').insert({ ...row, id, photos }).select().single());
+      db.listings.unshift(listingFromRow(saved));
+    }
   } catch (err) {
     removePhotos(uploaded);
     errorEl.textContent = `${t('sell.saveFailed')} ${t(authError(err))}`;
-    status(t('sell.submit'));
+    status(t(editing ? 'sell.save' : 'sell.submit'));
     if (submitBtn) submitBtn.disabled = false;
     return;
   } finally {
     publishing = false;
   }
   pendingPhotos = [];
-  toast(t('sell.published'));
-  go('car', id);
+  editingId = null;
+  toast(t(editing ? 'sell.saved' : 'sell.published'));
+  if (editing) go('car', id, { replace: true }); // «Назад» не вернёт в уже сохранённую форму
+  else go('car', id);
 }
 
 /* ---------- Модальные окна: вход / регистрация и подтверждение ---------- */
@@ -4909,7 +4980,7 @@ function router({ keepScroll = false } = {}) {
       break;
     case 'sell':
       renderNav('sell');
-      viewSell();
+      viewSell(param);
       break;
     case 'account':
       renderNav(String(param || '').startsWith('messages') ? 'messages' : 'account');
