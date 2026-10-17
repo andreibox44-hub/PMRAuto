@@ -1954,6 +1954,11 @@ function toast(message, type = '') {
 // Ссылка из письма «восстановить пароль» открывает сайт с #...type=recovery — запоминаем до разбора адреса
 const RECOVERY_LINK = /type=recovery/.test(location.hash);
 const AUTH_LINK_ERROR = /error_code=/.test(location.hash);
+// Ссылку с ошибкой (устарела, уже использована) убираем до запуска Supabase:
+// увидев ошибку в адресе, он выходит из аккаунта, а нам достаточно показать сообщение
+if (AUTH_LINK_ERROR) {
+  try { history.replaceState(null, '', '#/'); } catch { /* ignore */ }
+}
 
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY) || null;
 
@@ -3387,17 +3392,31 @@ function renderResults() {
           <a href="#" data-go="home" class="btn btn-ghost">${t('results.newSearchBtn')}</a>
         </div>
       </div>`;
-  // Запоминаем фильтры в истории, чтобы «Назад» со страницы машины вернул к тем же результатам
+  // Фильтры сразу попадают в адрес: ссылкой можно поделиться, а «Назад» со страницы машины
+  // вернёт к тем же результатам
   currentRoute.param = { ...filters };
-  try { history.replaceState(currentRoute, ''); } catch { /* ignore */ }
+  setHistory(currentRoute, true);
 }
 
 /* ---------- Карточка автомобиля ---------- */
 
 let galleryStep = null; // для стрелок клавиатуры на странице авто
 
+// Объявления нет в памяти — возможно, его добавили уже после загрузки сайта (открыли свежую
+// ссылку). Один раз перезагружаем данные с сервера и перерисовываем страницу
+const refetchedIds = new Set();
+function refetchMissing(id) {
+  if (!booted || !id || refetchedIds.has(id)) return false;
+  refetchedIds.add(id);
+  const route = currentRoute;
+  app.innerHTML = `<div class="empty"><p>${t('app.loading')}</p></div>`;
+  refreshData(true).then(() => { if (currentRoute === route) router({ keepScroll: true }); });
+  return true;
+}
+
 function viewDetail(id) {
   const car = getListings().find((l) => l.id === id);
+  if (!car && refetchMissing(id)) return;
   if (!car) {
     app.innerHTML = `<div class="empty"><h3>${t('detail.notFound')}</h3><p>${t('detail.notFoundText')}</p>
       <p><a href="#" data-go="catalog" class="btn btn-primary">${t('detail.toCatalog')}</a></p></div>`;
@@ -3930,7 +3949,7 @@ function restoreForm(selector, values) {
 
 function viewAccount(tab) {
   const user = currentUser();
-  if (!user) return requireLogin('account');
+  if (!user) return requireLogin();
   let chatId = null;
   if (String(tab).startsWith('messages:')) { // «messages:<id>» — открыт конкретный диалог
     chatId = String(tab).slice('messages:'.length);
@@ -4230,10 +4249,11 @@ let processingCount = 0;
 let editingId = null;
 
 function viewSell(id = null) {
-  if (!currentUser()) return requireLogin('sell');
+  if (!currentUser()) return requireLogin();
   processingCount = 0;
   if (id) {
     const car = db.listings.find((l) => l.id === id);
+    if (!car && refetchMissing(id)) return;
     if (!car || car.owner !== currentUser()) {
       editingId = null;
       app.innerHTML = `<div class="empty"><h3>${t('detail.notFound')}</h3><p>${t('sell.notYours')}</p>
@@ -4511,7 +4531,7 @@ async function onSellSubmit(e) {
     return;
   }
 
-  if (!db.me) return requireLogin('sell');
+  if (!db.me) return requireLogin();
   const editing = editingId ? db.listings.find((l) => l.id === editingId) : null;
   const id = editing ? editing.id : newId();
   const row = {
@@ -4583,10 +4603,13 @@ async function onSellSubmit(e) {
 
 let afterLogin = null;
 
-function requireLogin(target) {
+// Страница только для вошедших: показываем главную с окном входа, а после входа
+// открываем ту страницу, куда шли (вместе с вкладкой кабинета, чатом или объявлением)
+function requireLogin() {
+  const { name, param } = currentRoute;
   go('home', null, { replace: true });
   openAuth('login', true);
-  afterLogin = target;
+  afterLogin = () => go(name, param);
 }
 
 function openModal() {
@@ -4933,11 +4956,83 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-open-help]')) openHelp();
 });
 
-/* ---------- Роутер ---------- */
-/* Маршрут хранится в памяти и в history.state (адрес страницы не меняется),
-   поэтому кнопка «Назад» работает, а сайт открывается где угодно, даже во фрейме. */
+/* ---------- Роутер ----------
+   У каждой страницы свой адрес после решётки — так ссылку можно отправить, страница
+   переживает обновление, а GitHub Pages не нужно ничего настраивать:
+     #/                         главная
+     #/search?brand=BMW&...     результаты поиска (только фильтры, отличные от обычных)
+     #/car/<id>                 объявление
+     #/sell, #/sell/<id>        новое объявление / редактирование
+     #/account/<вкладка>        личный кабинет: profile, messages, listings, security
+     #/account/messages/<id>    открытый чат
+     #/page/<id>, #/favorites, #/compare
+   Адрес — главный источник правды: по нему восстанавливается страница при загрузке
+   и при «Назад»/«Вперёд». Пути к картинкам (img/...) от решётки не зависят. */
 
 let currentRoute = { name: 'home', param: null };
+
+const enc = encodeURIComponent;
+
+function routeToHash({ name, param }) {
+  switch (name) {
+    case 'search': {
+      const query = new URLSearchParams();
+      for (const [k, v] of Object.entries(param || {})) {
+        if (k in DEFAULT_FILTERS && v !== DEFAULT_FILTERS[k]) query.set(k, v);
+      }
+      const qs = query.toString();
+      return `#/search${qs ? `?${qs}` : ''}`;
+    }
+    case 'car': return `#/car/${enc(param || '')}`;
+    case 'sell': return param ? `#/sell/${enc(param)}` : '#/sell';
+    case 'account': {
+      const [tab, chatId] = String(param || 'profile').split(':');
+      return `#/account/${enc(tab)}${chatId ? `/${enc(chatId)}` : ''}`;
+    }
+    case 'my': return '#/account/listings';
+    case 'page': return `#/page/${enc(param || '')}`;
+    case 'favorites': return '#/favorites';
+    case 'compare': return '#/compare';
+    default: return '#/';
+  }
+}
+
+function hashToRoute(hash) {
+  // Ссылки из писем Supabase (#access_token=…, #error=…) — не наши адреса: открываем главную
+  if (!hash.startsWith('#/')) return { name: 'home', param: null };
+  const [pathPart, qs = ''] = hash.slice(2).split('?');
+  const [name, ...rest] = pathPart.split('/').filter(Boolean).map((s) => {
+    try { return decodeURIComponent(s); } catch { return s; }
+  });
+  switch (name) {
+    case 'search': {
+      const param = { ...DEFAULT_FILTERS };
+      for (const [k, v] of new URLSearchParams(qs)) if (k in DEFAULT_FILTERS) param[k] = v;
+      if (param.vehicle && !VEHICLES.includes(param.vehicle)) param.vehicle = '';
+      if (!SORTERS[param.sort]) param.sort = DEFAULT_FILTERS.sort;
+      return { name, param };
+    }
+    case 'car':
+    case 'page':
+      return { name, param: rest[0] || '' };
+    case 'sell':
+      return { name, param: rest[0] || null };
+    case 'account':
+      return { name, param: rest[1] ? `${rest[0]}:${rest[1]}` : rest[0] || 'profile' };
+    case 'favorites':
+    case 'compare':
+      return { name, param: null };
+    default:
+      return { name: 'home', param: null };
+  }
+}
+
+// Записывает маршрут в адрес и историю браузера
+function setHistory(route, replace = false) {
+  try {
+    history[replace ? 'replaceState' : 'pushState'](route, '', routeToHash(route));
+  } catch { /* history недоступна — просто рисуем */ }
+}
 
 function go(name, param = null, { replace = false } = {}) {
   if (name === 'catalog') { // «Каталог» и «Смотреть все» — все объявления без фильтров
@@ -4945,22 +5040,50 @@ function go(name, param = null, { replace = false } = {}) {
     name = 'search';
   }
   if (name === 'search') param = { ...filters };
+  if (name === 'my') { // старый адрес «Мои объявления» — теперь вкладка кабинета
+    name = 'account';
+    param = 'listings';
+  }
   currentRoute = { name, param };
-  try {
-    history[replace ? 'replaceState' : 'pushState'](currentRoute, '');
-  } catch { /* history недоступна — просто рисуем */ }
+  setHistory(currentRoute, replace);
   router();
 }
 
-window.addEventListener('popstate', (e) => {
-  currentRoute = e.state?.name ? e.state : { name: 'home', param: null };
+// «Назад»/«Вперёд» и ручное изменение адреса: страницу берём из адреса
+window.addEventListener('popstate', () => {
+  const raw = location.hash;
+  currentRoute = hashToRoute(raw);
+  if (!booted) return; // данные ещё грузятся — boot() сам нарисует нужную страницу
   if (!$('#modal').hidden) closeModal();
+  // Не наш адрес (например, служебная ссылка Supabase в уже открытой вкладке) — приводим в порядок
+  if (raw && !raw.startsWith('#/')) setHistory(currentRoute, true);
   router();
+  if (/error_code=/.test(raw)) toast(t('auth.linkExpired'), 'error');
 });
+
+// Настоящий адрес ссылки — чтобы работали «Открыть в новой вкладке» и «Копировать ссылку»
+function linkHash(link) {
+  const name = link.dataset.go;
+  const param = link.dataset.param || null;
+  if (name === 'catalog') return routeToHash({ name: 'search', param: { ...DEFAULT_FILTERS, vehicle: '' } });
+  if (name === 'search') return routeToHash({ name, param: { ...filters } });
+  return routeToHash({ name, param });
+}
+
+// Ссылки рисуются с href="#", а адрес подставляется, когда на них наводят мышь, фокус или палец
+['mouseover', 'focusin', 'touchstart'].forEach((type) => document.addEventListener(type, (e) => {
+  const link = e.target.closest?.('a[data-go]');
+  if (link) link.setAttribute('href', linkHash(link));
+}, { passive: true }));
 
 document.addEventListener('click', (e) => {
   const link = e.target.closest('[data-go]');
   if (!link) return;
+  // Ctrl/Cmd/Shift+клик — новая вкладка или окно: пусть браузер откроет ссылку сам
+  if (link.tagName === 'A' && (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0)) {
+    link.setAttribute('href', linkHash(link));
+    return;
+  }
   e.preventDefault();
   go(link.dataset.go, link.dataset.param || null);
 });
@@ -5052,8 +5175,9 @@ let booted = false;
 async function boot() {
   try { OLD_KEYS.forEach((k) => localStorage.removeItem(k)); } catch { /* хранилище недоступно */ }
   buildExamples();
+  // Открываем ту страницу, что в адресе (после обновления или по присланной ссылке)
+  currentRoute = hashToRoute(location.hash);
   applyStaticText();
-  try { history.replaceState(currentRoute, ''); } catch { /* ignore */ }
   app.innerHTML = `<div class="empty"><p>${t('app.loading')}</p></div>`;
 
   let session = null;
@@ -5065,14 +5189,15 @@ async function boot() {
   await loadData();
   await loadSession(session);
   booted = true;
+  // Пока грузились данные, адрес могли поменять («Назад» или ссылки из писем Supabase,
+  // которые Supabase сам убирает из адреса) — берём его заново
+  currentRoute = hashToRoute(location.hash);
+  // Записываем адрес в каноническом виде; служебная часть ссылок из писем при этом исчезает
+  setHistory(currentRoute, true);
   router();
   subscribeMessages();
   if (db.failed) toast(t('err.load'), 'error');
 
-  // Пришли по ссылке из письма Supabase: убираем служебную часть адреса
-  if (RECOVERY_LINK || AUTH_LINK_ERROR) {
-    try { history.replaceState(currentRoute, '', siteUrl() + location.search); } catch { /* ignore */ }
-  }
   if (RECOVERY_LINK && db.me) openNewPassword();
   else if (AUTH_LINK_ERROR) toast(t('auth.linkExpired'), 'error');
 }
