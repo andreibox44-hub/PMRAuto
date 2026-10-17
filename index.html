@@ -53,6 +53,7 @@
   --danger-soft: #fef1f0;
   --danger-border: #f2c4bf;
   --overlay: rgba(12, 16, 24, .72);
+  --best-bg: #e3f4ea; --best-fg: #0a6b34;
   --scrim: rgba(16, 24, 40, .55);
   --toast-bg: #171c26;
   --toast-fg: #ffffff;
@@ -76,7 +77,7 @@
     --text: #e7eaf0; --muted: #9ba5b5; --border: #2c323e; --border-strong: #434b5a;
     --primary: #ff7a2b; --primary-hover: #ff9152; --primary-soft: #36231a; --on-primary: #1a0e06;
     --accent: #84b4ff; --pmr-red: #f0414f; --pmr-green: #2fb46b; --logo-blue: #5cc3f5; --hero-tint: #17212e; --danger: #ff6b5e; --danger-soft: #361c1a; --danger-border: #5e2b27;
-    --overlay: rgba(0, 0, 0, .72); --scrim: rgba(0, 0, 0, .66);
+    --overlay: rgba(0, 0, 0, .72); --best-bg: #143222; --best-fg: #74d9a0; --scrim: rgba(0, 0, 0, .66);
     --toast-bg: #e7eaf0; --toast-fg: #11141a; --focus: rgba(255, 122, 43, .4);
     --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 12px 32px rgba(0, 0, 0, .45);
     --fuel-petrol-bg: #3a2416; --fuel-petrol-fg: #ffb27d;
@@ -92,7 +93,7 @@
   --text: #e7eaf0; --muted: #9ba5b5; --border: #2c323e; --border-strong: #434b5a;
   --primary: #ff7a2b; --primary-hover: #ff9152; --primary-soft: #36231a; --on-primary: #1a0e06;
   --accent: #84b4ff; --pmr-red: #f0414f; --pmr-green: #2fb46b; --logo-blue: #5cc3f5; --hero-tint: #17212e; --danger: #ff6b5e; --danger-soft: #361c1a; --danger-border: #5e2b27;
-  --overlay: rgba(0, 0, 0, .72); --scrim: rgba(0, 0, 0, .66);
+  --overlay: rgba(0, 0, 0, .72); --best-bg: #143222; --best-fg: #74d9a0; --scrim: rgba(0, 0, 0, .66);
   --toast-bg: #e7eaf0; --toast-fg: #11141a; --focus: rgba(255, 122, 43, .4);
   --shadow: 0 1px 2px rgba(0, 0, 0, .3); --shadow-lg: 0 12px 32px rgba(0, 0, 0, .45);
   --fuel-petrol-bg: #3a2416; --fuel-petrol-fg: #ffb27d;
@@ -894,6 +895,54 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   .card-price { font-size: 1.1rem; }
   .meta { font-size: .8rem; gap: 4px 10px; }
 }
+/* ---------- Избранное и сравнение ---------- */
+.card { position: relative; }
+.card-tools { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; gap: 6px; }
+.icon-toggle {
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 999px; background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-lg); cursor: pointer; transition: color .15s, background .15s, transform .15s;
+}
+.icon-toggle svg { width: 19px; height: 19px; }
+.icon-toggle:hover { transform: scale(1.08); }
+.fav-toggle[aria-pressed="true"] { color: var(--danger); }
+.fav-toggle[aria-pressed="true"] svg, .save-btn.on[data-save="fav"] svg { fill: currentColor; }
+.cmp-toggle[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+.save-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.save-actions .btn { flex: 1; }
+.save-btn svg { width: 18px; height: 18px; flex: none; }
+.save-btn.on[data-save="fav"] { color: var(--danger); border-color: var(--danger-border); }
+.save-btn.on[data-save="cmp"] { color: var(--primary); border-color: var(--primary); }
+.nav-icon { display: inline-flex; align-items: center; gap: 6px; }
+.nav-icon svg { width: 20px; height: 20px; }
+.count {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 999px; background: var(--primary); color: var(--on-primary);
+  font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+}
+.compare-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.compare { width: 100%; border-collapse: collapse; min-width: calc(150px + var(--cols) * 190px); }
+.compare th, .compare td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.compare tbody tr:last-child > * { border-bottom: 0; }
+.compare th:first-child { position: sticky; left: 0; z-index: 1; width: 150px; background: var(--surface); }
+.compare tbody th { color: var(--muted); font-weight: 500; }
+.compare thead th { vertical-align: bottom; font-weight: 700; }
+.compare td { font-weight: 600; font-variant-numeric: tabular-nums; }
+.compare td.best { background: var(--best-bg); color: var(--best-fg); }
+.compare-car { display: flex; flex-direction: column; gap: 8px; color: var(--text); text-decoration: none; }
+.compare-car:hover span { text-decoration: underline; }
+.compare-car img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: var(--media); }
+.compare .cmp-remove { margin-top: 10px; }
+.compare-hint { margin: 12px 0 0; color: var(--muted); }
+@media (max-width: 600px) {
+  .nav-icon-label { display: none; }
+  /* Телефон: счётчик — кружок в углу значка, чтобы шапка не разъезжалась */
+  .nav-icon { position: relative; padding: 8px; }
+  .nav-icon .count { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; font-size: .68rem; box-shadow: 0 0 0 2px var(--surface); }
+  .compare { min-width: calc(110px + var(--cols) * 160px); }
+  .compare th:first-child { width: 110px; }
+  .compare th, .compare td { padding: 10px; }
+}
 </style>
   <header class="topbar">
     <div class="container topbar-inner">
@@ -948,6 +997,8 @@ const KEYS = {
   helpLast: 'am_help_last',
   chats: 'am_chats',
   messages: 'am_messages',
+  favorites: 'am_favorites',
+  compare: 'am_compare',
 };
 
 /* Значения характеристик хранятся кодами, а на экран выводятся переводом */
@@ -1177,6 +1228,34 @@ const I18N = {
     'card.example': 'Пример',
     'card.open': 'Открыть',
     'card.delete': 'Удалить',
+    'nav.favorites': 'Избранное',
+    'nav.compare': 'Сравнение',
+    'fav.add': 'Добавить в избранное',
+    'fav.remove': 'Убрать из избранного',
+    'fav.added': 'Добавлено в избранное',
+    'fav.removed': 'Убрано из избранного',
+    'fav.btn': 'В избранное',
+    'fav.btnActive': 'В избранном',
+    'fav.title': 'Избранное',
+    'fav.note': 'Список хранится в этом браузере.',
+    'fav.empty': 'В избранном пока пусто',
+    'fav.emptyText': 'Нажмите на сердечко на карточке объявления, чтобы сохранить его здесь.',
+    'cmp.add': 'Добавить к сравнению',
+    'cmp.remove': 'Убрать из сравнения',
+    'cmp.added': 'Добавлено к сравнению: {n} из {max}',
+    'cmp.removed': 'Убрано из сравнения',
+    'cmp.full': 'Сравнивать можно не больше {max} объявлений. Уберите одно, чтобы добавить новое.',
+    'cmp.btn': 'Сравнить',
+    'cmp.btnActive': 'В сравнении',
+    'cmp.title': 'Сравнение',
+    'cmp.note': 'До {max} объявлений рядом. Лучшая цена, год, пробег и мощность выделены зелёным.',
+    'cmp.empty': 'Сравнивать пока нечего',
+    'cmp.emptyText': 'Нажмите на значок весов на карточке объявления, чтобы добавить его к сравнению.',
+    'cmp.addMore': 'Добавьте ещё хотя бы одно объявление, чтобы было с чем сравнить.',
+    'cmp.clear': 'Очистить',
+    'cmp.removeOne': 'Убрать',
+    'cmp.param': 'Параметр',
+    'cmp.price': 'Цена',
 
     'detail.back': '← Назад к каталогу',
     'detail.notFound': 'Объявление не найдено',
@@ -1520,6 +1599,34 @@ const I18N = {
     'card.example': 'Example',
     'card.open': 'Open',
     'card.delete': 'Delete',
+    'nav.favorites': 'Saved',
+    'nav.compare': 'Compare',
+    'fav.add': 'Save',
+    'fav.remove': 'Remove from saved',
+    'fav.added': 'Saved',
+    'fav.removed': 'Removed from saved',
+    'fav.btn': 'Save',
+    'fav.btnActive': 'Saved',
+    'fav.title': 'Saved listings',
+    'fav.note': 'This list is stored in this browser.',
+    'fav.empty': 'Nothing saved yet',
+    'fav.emptyText': 'Tap the heart on a listing to save it here.',
+    'cmp.add': 'Add to comparison',
+    'cmp.remove': 'Remove from comparison',
+    'cmp.added': 'Added to comparison: {n} of {max}',
+    'cmp.removed': 'Removed from comparison',
+    'cmp.full': 'You can compare up to {max} listings. Remove one to add another.',
+    'cmp.btn': 'Compare',
+    'cmp.btnActive': 'In comparison',
+    'cmp.title': 'Compare',
+    'cmp.note': 'Up to {max} listings side by side. The best price, year, mileage and power are highlighted in green.',
+    'cmp.empty': 'Nothing to compare yet',
+    'cmp.emptyText': 'Tap the scales icon on a listing to add it to the comparison.',
+    'cmp.addMore': 'Add at least one more listing to compare.',
+    'cmp.clear': 'Clear',
+    'cmp.removeOne': 'Remove',
+    'cmp.param': 'Spec',
+    'cmp.price': 'Price',
 
     'detail.back': '← Back to listings',
     'detail.notFound': 'Listing not found',
@@ -2176,6 +2283,7 @@ function renderNav(route) {
   const active = (r) => (route === r ? ' active' : '');
   $('#nav').innerHTML = langSwitchHtml() + (user
     ? `<a href="#" data-go="catalog" class="nav-link nav-catalog${active('search')}">${t('nav.catalog')}</a>
+       ${savedNavHtml(route)}
        <a href="#" data-go="account" data-param="messages" id="nav-messages" class="nav-link nav-messages${active('messages')}" aria-label="${t('nav.messages')}">
          ${CHAT_ICON}<span class="nav-messages-label">${t('nav.messages')}</span><span class="badge" data-unread hidden></span>
        </a>
@@ -2185,9 +2293,11 @@ function renderNav(route) {
        </a>
        <button type="button" class="btn btn-ghost btn-sm" id="logout-btn">${t('nav.logout')}</button>`
     : `<a href="#" data-go="catalog" class="nav-link nav-catalog${active('search')}">${t('nav.catalog')}</a>
+       ${savedNavHtml(route)}
        <button type="button" class="btn btn-ghost" data-auth="login">${t('nav.login')}</button>
        <button type="button" class="btn btn-primary" data-auth="register">${t('nav.register')}</button>`);
   if (user) refreshUnread();
+  updateSavedNav();
 }
 
 $('#nav').addEventListener('click', (e) => {
@@ -2602,11 +2712,191 @@ function cardHtml(car, { owner = false } = {}) {
         </ul>
       </div>
     </a>
+    ${owner ? '' : `<div class="card-tools">${cardToolsHtml(car.id)}</div>`}
     ${owner ? `<div class="card-actions">
       <a class="btn btn-ghost btn-sm" href="#" data-go="car" data-param="${esc(car.id)}">${t('card.open')}</a>
       <button type="button" class="btn btn-danger btn-sm" data-delete="${esc(car.id)}">${t('card.delete')}</button>
     </div>` : ''}
   </article>`;
+}
+
+/* ---------- Избранное и сравнение ---------- */
+// Списки id объявлений хранятся в этом браузере и работают без входа в аккаунт
+const COMPARE_MAX = 4;
+const HEART_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.7 3.9 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.2 4.5 6.6-1.7 4.8-9.2 9.4-9.2 9.4z"/></svg>`;
+const COMPARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M12 3v18"/><path d="M7 21h10"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
+  <path d="m2 16 3-8 3 8c-.9.7-1.9 1-3 1s-2.1-.3-3-1z"/><path d="m16 16 3-8 3 8c-.9.7-1.9 1-3 1s-2.1-.3-3-1z"/></svg>`;
+const SAVED_KEYS = { fav: KEYS.favorites, cmp: KEYS.compare };
+
+function rawSaved(kind) {
+  const ids = store.get(SAVED_KEYS[kind], []);
+  return Array.isArray(ids) ? ids : [];
+}
+const isSaved = (kind, id) => rawSaved(kind).includes(id);
+// Только объявления, которые ещё существуют: удалённые тихо пропускаем
+function savedListings(kind) {
+  const byId = new Map(getListings().map((l) => [l.id, l]));
+  return rawSaved(kind).map((id) => byId.get(id)).filter(Boolean);
+}
+
+function toggleSaved(kind, id) {
+  const ids = savedListings(kind).map((l) => l.id);
+  const on = !ids.includes(id);
+  if (on && kind === 'cmp' && ids.length >= COMPARE_MAX) {
+    toast(t('cmp.full', { max: COMPARE_MAX }), 'error');
+    return;
+  }
+  try {
+    store.set(SAVED_KEYS[kind], on ? [...ids, id] : ids.filter((x) => x !== id));
+  } catch {
+    toast(t('err.storage'), 'error');
+    return;
+  }
+  if (kind === 'fav') toast(t(on ? 'fav.added' : 'fav.removed'));
+  else toast(on ? t('cmp.added', { n: ids.length + 1, max: COMPARE_MAX }) : t('cmp.removed'));
+  // На страницах «Избранное» и «Сравнение» перерисовываем список, на остальных — только кнопки
+  if (['favorites', 'compare'].includes(currentRoute.name)) router({ keepScroll: true });
+  else updateSavedUI();
+}
+
+const toggleLabel = (kind, on) => t(`${kind}.${on ? 'remove' : 'add'}`);
+
+// Круглые кнопки поверх фото в карточке
+function cardToolsHtml(id) {
+  return ['fav', 'cmp'].map((kind) => {
+    const on = isSaved(kind, id);
+    return `<button type="button" class="icon-toggle ${kind}-toggle" data-save="${kind}" data-id="${esc(id)}"
+      aria-pressed="${on}" aria-label="${toggleLabel(kind, on)}" title="${toggleLabel(kind, on)}">${kind === 'fav' ? HEART_ICON : COMPARE_ICON}</button>`;
+  }).join('');
+}
+
+// Кнопки с подписью на странице объявления
+function saveActionsHtml(id) {
+  return `<div class="save-actions">${['fav', 'cmp'].map((kind) => {
+    const on = isSaved(kind, id);
+    return `<button type="button" class="btn btn-ghost btn-sm save-btn${on ? ' on' : ''}" data-save="${kind}" data-id="${esc(id)}">
+      ${kind === 'fav' ? HEART_ICON : COMPARE_ICON}<span>${t(`${kind}.${on ? 'btnActive' : 'btn'}`)}</span></button>`;
+  }).join('')}</div>`;
+}
+
+function savedNavHtml(route) {
+  return ['fav', 'cmp'].map((kind) => {
+    const name = kind === 'fav' ? 'favorites' : 'compare';
+    return `<a href="#" data-go="${name}" id="nav-${kind}" class="nav-link nav-icon${route === name ? ' active' : ''}"${kind === 'cmp' ? ' hidden' : ''}>
+      ${kind === 'fav' ? HEART_ICON : COMPARE_ICON}<span class="nav-icon-label">${t(`nav.${name}`)}</span><span class="count" hidden></span></a>`;
+  }).join('');
+}
+
+// Счётчики в шапке. «Сравнение» показываем, только когда в нём что-то есть
+function updateSavedNav() {
+  ['fav', 'cmp'].forEach((kind) => {
+    const link = $(`#nav-${kind}`);
+    if (!link) return;
+    const n = savedListings(kind).length;
+    const label = t(`nav.${kind === 'fav' ? 'favorites' : 'compare'}`);
+    const badge = link.querySelector('.count');
+    badge.textContent = n;
+    badge.hidden = !n;
+    link.setAttribute('aria-label', n ? `${label}: ${n}` : label);
+    if (kind === 'cmp') link.hidden = !n && currentRoute.name !== 'compare';
+  });
+}
+
+function updateSavedUI() {
+  document.querySelectorAll('.icon-toggle[data-save]').forEach((b) => {
+    const on = isSaved(b.dataset.save, b.dataset.id);
+    b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-label', toggleLabel(b.dataset.save, on));
+    b.title = toggleLabel(b.dataset.save, on);
+  });
+  document.querySelectorAll('.save-btn[data-save]').forEach((b) => {
+    const on = isSaved(b.dataset.save, b.dataset.id);
+    b.classList.toggle('on', on);
+    b.querySelector('span').textContent = t(`${b.dataset.save}.${on ? 'btnActive' : 'btn'}`);
+  });
+  updateSavedNav();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-save]');
+  if (btn) toggleSaved(btn.dataset.save, btn.dataset.id);
+});
+
+const savedEmptyHtml = (kind) => `<div class="empty"><h3>${t(`${kind}.empty`)}</h3><p>${t(`${kind}.emptyText`)}</p>
+  <p><a href="#" data-go="catalog" class="btn btn-primary">${t('detail.toCatalog')}</a></p></div>`;
+
+function viewFavorites() {
+  const cars = savedListings('fav').reverse(); // последние добавленные — первыми
+  app.innerHTML = `
+    <div class="page-head"><div>
+      <h1>${t('fav.title')}</h1>
+      <p>${cars.length ? `${num(cars.length)} ${plural('plural.listings', cars.length)} · ` : ''}${t('fav.note')}</p>
+    </div></div>
+    ${cars.length ? `<div class="grid">${cars.map((c) => cardHtml(c)).join('')}</div>` : savedEmptyHtml('fav')}`;
+}
+
+// Строки таблицы: [подпись, значение для показа, число для поиска лучшего, что лучше]
+const COMPARE_ROWS = [
+  ['cmp.price', (c) => fmtPrice(c.price), (c) => Number(c.price), 'min'],
+  ['spec.year', (c) => c.year, (c) => Number(c.year), 'max'],
+  ['spec.mileage', (c) => fmtKm(c.mileage), (c) => Number(c.mileage), 'min'],
+  ['spec.power', (c) => (c.power ? `${c.power} ${t('unit.hp')}` : ''), (c) => Number(c.power) || null, 'max'],
+  ['spec.vehicle', (c) => t(`vehicle.${vehicleOf(c)}`)],
+  ['spec.fuel', (c) => tv('fuel', c.fuel)],
+  ['spec.transmission', (c) => tv('transmission', c.transmission)],
+  ['spec.body', (c) => tv('body', c.body)],
+  ['spec.color', (c) => loc(c.color)],
+  ['spec.city', (c) => cityLabel(cityKey(c))],
+];
+
+// Лучшее значение подсвечиваем, только если значения у объявлений различаются
+function bestValue(cars, getNum, better) {
+  const nums = cars.map(getNum).filter((n) => n != null && Number.isFinite(n));
+  if (cars.length < 2 || new Set(nums).size < 2) return null;
+  return better === 'min' ? Math.min(...nums) : Math.max(...nums);
+}
+
+function viewCompare() {
+  const cars = savedListings('cmp');
+  const head = `
+    <div class="page-head">
+      <div><h1>${t('cmp.title')}</h1><p>${t('cmp.note', { max: COMPARE_MAX })}</p></div>
+      ${cars.length ? `<button type="button" class="btn btn-ghost btn-sm" id="cmp-clear">${t('cmp.clear')}</button>` : ''}
+    </div>`;
+  if (!cars.length) {
+    app.innerHTML = head + savedEmptyHtml('cmp');
+    return;
+  }
+  const rows = COMPARE_ROWS.map(([label, show, getNum, better]) => {
+    const best = getNum ? bestValue(cars, getNum, better) : null;
+    return `<tr><th scope="row">${t(label)}</th>${cars.map((c) => {
+      const isBest = best != null && getNum(c) === best;
+      return `<td${isBest ? ' class="best"' : ''}>${esc(show(c) || '—')}</td>`;
+    }).join('')}</tr>`;
+  }).join('');
+  app.innerHTML = `${head}
+    <div class="compare-scroll">
+      <table class="compare" style="--cols: ${cars.length}">
+        <thead><tr><th scope="col"><span class="visually-hidden">${t('cmp.param')}</span></th>${cars.map((c) => `
+          <th scope="col">
+            <a href="#" class="compare-car" data-go="car" data-param="${esc(c.id)}">
+              <img src="${c.photos?.length ? photoSrc(c.photos[0]) : NO_PHOTO}" alt="" loading="lazy">
+              <span>${esc(c.brand)} ${esc(c.model)}</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-sm cmp-remove" data-save="cmp" data-id="${esc(c.id)}">${t('cmp.removeOne')}</button>
+          </th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${cars.length === 1 ? `<p class="compare-hint">${t('cmp.addMore')}</p>` : ''}`;
+  $('#cmp-clear').addEventListener('click', () => {
+    try { store.set(KEYS.compare, []); } catch { /* хранилище недоступно */ }
+    toast(t('cmp.removed'));
+    router({ keepScroll: true });
+  });
 }
 
 /* ---------- Главная: панель поиска, баннер, марки, новые объявления ---------- */
@@ -2854,6 +3144,7 @@ function viewDetail(id) {
       <aside class="panel detail-side">
         <h1>${title}</h1>
         <div class="detail-price">${fmtPrice(car.price)}</div>
+        ${saveActionsHtml(car.id)}
         <div class="key-facts">
           <div class="key-fact"><span>${t('detail.year')}</span><b>${esc(car.year)}</b></div>
           <div class="key-fact"><span>${t('detail.mileage')}</span><b>${fmtKm(car.mileage)}</b></div>
@@ -4162,7 +4453,7 @@ function router({ keepScroll = false } = {}) {
   galleryStep = null;
   // В разделе «Сообщения» на телефоне прячем плавающую кнопку, чтобы она не закрывала поле ввода
   document.body.classList.toggle('in-messages', route === 'account' && String(param || '').startsWith('messages'));
-  app.classList.toggle('container-wide', !['car', 'sell', 'my', 'account', 'page', 'search'].includes(route));
+  app.classList.toggle('container-wide', !['car', 'sell', 'my', 'account', 'page', 'search', 'favorites', 'compare'].includes(route));
 
   switch (route) {
     case 'car':
@@ -4185,6 +4476,14 @@ function router({ keepScroll = false } = {}) {
       renderNav('page');
       viewPage(param || '');
       break;
+    case 'favorites':
+      renderNav('favorites');
+      viewFavorites();
+      break;
+    case 'compare':
+      renderNav('compare');
+      viewCompare();
+      break;
     case 'search':
       if (param) Object.assign(filters, DEFAULT_FILTERS, param);
       renderNav('search');
@@ -4202,6 +4501,10 @@ function router({ keepScroll = false } = {}) {
 window.addEventListener('storage', (e) => {
   if (e.key === KEYS.lang && LANGS[e.newValue]) return setLang(e.newValue);
   if ([KEYS.session, KEYS.listings].includes(e.key) && currentRoute.name !== 'sell') router();
+  if ([KEYS.favorites, KEYS.compare].includes(e.key)) {
+    if (['favorites', 'compare'].includes(currentRoute.name)) router({ keepScroll: true });
+    else updateSavedUI();
+  }
   if ([KEYS.chats, KEYS.messages].includes(e.key)) {
     refreshUnread();
     if (currentRoute.name === 'account' && String(currentRoute.param || '').startsWith('messages')) {
