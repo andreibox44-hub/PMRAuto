@@ -1,5 +1,26 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>PMRAuto</title>
+<!doctype html><html lang="ru"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<title>PMRAuto — покупка и продажа автомобилей в Приднестровье и Молдове</title>
+<meta name="description" content="Объявления о продаже автомобилей, мотоциклов, грузовиков и фургонов в Приднестровье и Молдове. Поиск по марке, цене, году и городу, чат с продавцом.">
+<link rel="canonical" href="https://andreibox44-hub.github.io/PMRAuto/">
+<meta name="theme-color" content="#e85d0c">
+<!-- Иконка сайта: буква P на оранжевом фоне -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Превью ссылки в соцсетях и мессенджерах (Open Graph) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PMRAuto">
+<meta property="og:url" content="https://andreibox44-hub.github.io/PMRAuto/">
+<meta property="og:title" content="PMRAuto — покупка и продажа автомобилей в Приднестровье и Молдове">
+<meta property="og:description" content="Объявления о продаже автомобилей, мотоциклов, грузовиков и фургонов в Приднестровье и Молдове. Поиск по марке, цене, году и городу, чат с продавцом.">
+<meta property="og:image" content="https://andreibox44-hub.github.io/PMRAuto/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Логотип PMRAuto и подпись «Покупка и продажа автомобилей в Приднестровье и Молдове»">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+</head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
 <style>
@@ -971,6 +992,8 @@ const I18N = {
     'meta.close': 'Закрыть',
     'meta.home': 'PMRAuto — на главную',
     'meta.language': 'Язык',
+    'meta.title': 'PMRAuto — покупка и продажа автомобилей в Приднестровье и Молдове',
+    'meta.description': 'Объявления о продаже автомобилей, мотоциклов, грузовиков и фургонов в Приднестровье и Молдове. Поиск по марке, цене, году и городу, чат с продавцом.',
 
     'nav.messages': 'Сообщения',
     'account.tab.messages': 'Сообщения',
@@ -1312,6 +1335,8 @@ const I18N = {
     'meta.close': 'Close',
     'meta.home': 'PMRAuto home',
     'meta.language': 'Language',
+    'meta.title': 'PMRAuto — buy and sell cars in Transnistria and Moldova',
+    'meta.description': 'Cars, motorcycles, trucks and vans for sale in Transnistria and Moldova. Search by make, price, year and city, and chat with the seller.',
 
     'nav.messages': 'Messages',
     'account.tab.messages': 'Messages',
@@ -2119,6 +2144,8 @@ function viewPage(id) {
 // Тексты из index.html, которые не перерисовываются вместе со страницами
 function applyStaticText() {
   document.documentElement.lang = lang;
+  document.title = t('meta.title');
+  $('meta[name="description"]').setAttribute('content', t('meta.description'));
   renderFooter();
   $('.logo').setAttribute('aria-label', t('meta.home'));
   $('.modal-close').setAttribute('aria-label', t('meta.close'));
