@@ -781,6 +781,7 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
 .doc-note { display: inline-block; font-size: .78rem; font-weight: 600; color: var(--fuel-petrol-fg); background: var(--primary-soft); padding: 4px 10px; border-radius: 6px; margin: 0 0 16px; }
 .doc-body p { margin: 0 0 14px; white-space: pre-line; max-width: 68ch; overflow-wrap: anywhere; }
 .doc-body p:last-child { margin-bottom: 0; }
+.doc-action { margin: 20px 0 0; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
@@ -1120,11 +1121,11 @@ const I18N = {
     'page.about.title': 'О нас',
     'page.about.body': 'PMRAuto — площадка для покупки и продажи автомобилей в Приднестровье и Молдове. Частные продавцы размещают здесь объявления, а покупатели находят подходящую машину и договариваются с продавцом напрямую.\n\nКроме легковых машин, на PMRAuto можно продать или найти мотоцикл, грузовик или фургон. В каталоге удобно искать по марке, модели, году, цене, пробегу, городу, топливу и коробке передач.\n\nРазместить объявление просто: зарегистрируйтесь, заполните форму и добавьте до 10 фото. Покупатели напишут вам во встроенный чат, а объявление можно в любой момент изменить или снять.\n\nСейчас сайт работает в тестовом режиме: объявления, аккаунты и сообщения сохраняются только в вашем браузере, и другие посетители их пока не видят.\n\nЕсть вопрос или идея? Нажмите «Задать вопрос» — мы ответим.',
     'page.contacts.title': 'Контакты',
-    'page.contacts.body': 'Напишите нам: info@example.com\nТелефон: +49 000 000 0000 (пн–пт, 9:00–18:00)\n\nАдрес: [улица, дом], [индекс, город], Германия',
+    'page.contacts.body': 'PMRAuto — демо-проект, поэтому у нас нет офиса и телефона для звонков.\n\nЕсть вопрос, нашли ошибку или хотите предложить идею? Напишите нам через форму «Задать вопрос»: кнопка ниже или в правом нижнем углу любой страницы. Мы ответим на e-mail, который вы укажете.',
     'page.privacy.title': 'Политика конфиденциальности',
-    'page.privacy.body': 'Здесь будет описано, какие данные собирает сайт, зачем и как долго они хранятся.\n\nСейчас сайт не отправляет данные на сервер: аккаунты, объявления и фото хранятся только в localStorage вашего браузера. Удалить их можно, очистив данные сайта в настройках браузера.',
+    'page.privacy.body': 'PMRAuto — демо-проект. Здесь простыми словами рассказано, какие данные использует сайт.\n\nВсё, что вы вводите на сайте, хранится только в вашем браузере (в хранилище localStorage):\n• аккаунт и профиль: логин, имя, город, телефон, e-mail или Telegram, аватар;\n• пароль — не открытым текстом, а в виде хеша;\n• ваши объявления и фото;\n• переписка с продавцами и покупателями;\n• выбранный язык.\n\nУ сайта нет сервера, поэтому эти данные никуда не отправляются. Мы их не видим, а другие посетители не могут их посмотреть.\n\nИсключение — форма «Задать вопрос»: имя, e-mail и текст сообщения отправляются нам через сервис Web3Forms. Мы используем их только для ответа.\n\nШрифт сайта загружается с Google Fonts. При этом ваш браузер обращается к серверам Google, и Google видит ваш IP-адрес.\n\nCookies, реклама и счётчики посещений не используются.\n\nЧтобы удалить свои данные, очистите данные этого сайта в настройках браузера. Восстановить их после этого нельзя.',
     'page.terms.title': 'Условия использования',
-    'page.terms.body': 'Здесь будут правила использования PMRAuto: кто может размещать объявления, что запрещено публиковать и как решаются споры.\n\nВкратце: размещайте только свои машины, указывайте правдивые данные и не публикуйте чужие фото без разрешения.',
+    'page.terms.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме: настоящих сделок здесь нет, а примеры объявлений созданы для демонстрации.\n\nВаш аккаунт, объявления и сообщения хранятся только в вашем браузере. Другие посетители их не видят. Если очистить данные браузера, всё пропадёт, и восстановить это мы не сможем.\n\nПожалуйста:\n• размещайте только свои машины и правдивые данные;\n• не публикуйте чужие фото без разрешения;\n• не размещайте оскорбления, спам и незаконный контент.\n\nСайт предоставляется как есть, без гарантий. Мы не отвечаем за потерю данных в браузере.\n\nВопросы по правилам задавайте через форму «Задать вопрос».',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto — демо-проект. Сайт работает в тестовом режиме и не ведёт коммерческой деятельности.\n\nImpressum — страница с данными владельца сайта. Она будет заполнена, когда PMRAuto начнёт работать как настоящая площадка.\n\nСвязаться с нами можно через форму «Задать вопрос».',
     'page.cookies.title': 'Настройки cookies',
@@ -1461,11 +1462,11 @@ const I18N = {
     'page.about.title': 'About us',
     'page.about.body': 'PMRAuto is a marketplace for buying and selling cars in Transnistria and Moldova. Private sellers post listings here, and buyers find the right car and deal with the seller directly.\n\nBesides cars, you can sell or find a motorcycle, truck or van on PMRAuto. The catalogue lets you search by make, model, year, price, mileage, city, fuel type and gearbox.\n\nPosting a listing is easy: sign up, fill in the form and add up to 10 photos. Buyers can message you in the built-in chat, and you can edit or remove your listing at any time.\n\nThe site is currently in test mode: listings, accounts and messages are saved only in your browser, so other visitors can’t see them yet.\n\nHave a question or an idea? Click “Ask a question” and we’ll get back to you.',
     'page.contacts.title': 'Contact',
-    'page.contacts.body': 'Email us: info@example.com\nPhone: +49 000 000 0000 (Mon–Fri, 9:00–18:00)\n\nAddress: [street and number], [postcode, city], Germany',
+    'page.contacts.body': 'PMRAuto is a demo project, so we have no office or phone line.\n\nHave a question, found a bug or want to suggest an idea? Write to us using the “Ask a question” form: the button below or in the bottom-right corner of any page. We’ll reply to the email you enter.',
     'page.privacy.title': 'Privacy policy',
-    'page.privacy.body': 'This page will explain what data the site collects, why, and how long it is kept.\n\nRight now the site sends no data to a server: accounts, listings and photos are stored only in your browser’s localStorage. You can remove them by clearing the site data in your browser settings.',
+    'page.privacy.body': 'PMRAuto is a demo project. This page explains in plain words what data the site uses.\n\nEverything you enter on the site is stored only in your browser (in localStorage):\n• your account and profile: username, name, city, phone, email or Telegram, avatar;\n• your password — not as plain text, but as a hash;\n• your listings and photos;\n• your messages with sellers and buyers;\n• your chosen language.\n\nThe site has no server, so this data isn’t sent anywhere. We can’t see it, and other visitors can’t view it.\n\nThe one exception is the “Ask a question” form: your name, email and message are sent to us through the Web3Forms service. We use them only to reply.\n\nThe site’s font is loaded from Google Fonts. To do this your browser connects to Google’s servers, so Google sees your IP address.\n\nThe site uses no cookies, ads or visitor tracking.\n\nTo delete your data, clear this site’s data in your browser settings. It can’t be recovered afterwards.',
     'page.terms.title': 'Terms of use',
-    'page.terms.body': 'This page will set out the rules for using PMRAuto: who can post listings, what may not be published, and how disputes are handled.\n\nIn short: list only your own cars, give accurate details, and don’t post other people’s photos without permission.',
+    'page.terms.body': 'PMRAuto is a demo project. The site is running in test mode: no real deals happen here, and the example listings were made for demonstration.\n\nYour account, listings and messages are stored only in your browser. Other visitors can’t see them. If you clear your browser data, everything is lost and we can’t restore it.\n\nPlease:\n• list only your own vehicles and give accurate details;\n• don’t post other people’s photos without permission;\n• don’t post insults, spam or illegal content.\n\nThe site is provided as is, without any guarantees. We are not responsible for data lost from your browser.\n\nIf you have questions about these rules, use the “Ask a question” form.',
     'page.impressum.title': 'Impressum',
     'page.impressum.body': 'PMRAuto is a demo project. The site is running in test mode and is not a commercial service.\n\nThe Impressum is the legal notice naming who runs the site. It will be completed once PMRAuto launches as a real marketplace.\n\nYou can contact us using the “Ask a question” form.',
     'page.cookies.title': 'Cookie settings',
@@ -2064,7 +2065,7 @@ document.addEventListener('keydown', (e) => {
 const COMPANY_PAGES = ['about', 'contacts'];
 const LEGAL_PAGES = ['privacy', 'terms', 'impressum', 'cookies'];
 // Страницы с готовым текстом: на них не показываем пометку «текст-заглушка»
-const READY_PAGES = ['about', 'cookies'];
+const READY_PAGES = ['about', 'contacts', 'privacy', 'terms', 'cookies'];
 const INFO_PAGES = [...COMPANY_PAGES, ...LEGAL_PAGES];
 
 function renderFooter() {
@@ -2111,6 +2112,7 @@ function viewPage(id) {
       <h1>${t(`page.${id}.title`)}</h1>
       ${READY_PAGES.includes(id) ? '' : `<p class="doc-note">${t('page.placeholder')}</p>`}
       <div class="doc-body">${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}</div>
+      ${id === 'contacts' ? `<p class="doc-action"><button type="button" class="btn btn-primary" data-open-help>${t('help.button')}</button></p>` : ''}
     </article>`;
 }
 
@@ -4103,6 +4105,10 @@ function showHelpSuccess(email) {
 }
 
 $('#help-btn').addEventListener('click', openHelp);
+// Кнопки «Задать вопрос» внутри страниц (например, в «Контактах»)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-open-help]')) openHelp();
+});
 
 /* ---------- Роутер ---------- */
 /* Маршрут хранится в памяти и в history.state (адрес страницы не меняется),
